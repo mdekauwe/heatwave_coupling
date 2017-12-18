@@ -19,9 +19,6 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 
-from pygam import LinearGAM
-from pygam.utils import generate_X_grid
-
 def main(flux_dir):
 
     plot_dir = "plots"
@@ -54,7 +51,7 @@ def make_plot(plot_dir, site, df_flx, df_met):
     #width = 6*2*(1/golden_mean)
     #height = width * golden_mean
 
-    fig = plt.figure(figsize=(14, 4))
+    fig = plt.figure(figsize=(9, 6))
     fig.subplots_adjust(hspace=0.1)
     fig.subplots_adjust(wspace=0.2)
     plt.rcParams['text.usetex'] = False
@@ -79,8 +76,7 @@ def make_plot(plot_dir, site, df_flx, df_met):
     plt.rcParams['axes.edgecolor'] = almost_black
     plt.rcParams['axes.labelcolor'] = almost_black
 
-    ax1 = fig.add_subplot(121)
-    ax2 = fig.add_subplot(122)
+    ax1 = fig.add_subplot(111)
 
     colour_list = ["#E69F00","#56B4E9", "#009E73", "#CC79A7"]
 
@@ -100,47 +96,44 @@ def make_plot(plot_dir, site, df_flx, df_met):
     # daylight hours
     #df_flx = df_flx.between_time("07:00", "20:00")
     #df_met = df_met.between_time("07:00", "20:00")
-    x = df_met.Tair.values - K_TO_C
+    z = df_met.Tair.values - K_TO_C
+
+    x = df_flx.Qle.values
     y = df_flx.GPP.values
 
 
-    ax1.plot(df_met.Tair - K_TO_C, df_flx.GPP, ls=" ", marker="o",
-             color=colour_list[1], alpha=0.01)
-    ax2.plot(df_met.Tair  - K_TO_C, df_flx.Qle, ls=" ", marker="o",
-             color=colour_list[1], alpha=0.01)
 
-    x = x[~np.isnan(y)]
-    y = y[~np.isnan(y)]
-    y = y[~np.isnan(x)]
-    x = x[~np.isnan(x)]
-    gam = LinearGAM(n_splines=20).gridsearch(x, y)
-    XX = generate_X_grid(gam)
-    ax1.plot(XX, gam.predict(XX), 'k-', lw=2.0)
-    #ax1.plot(XX, gam.prediction_intervals(XX, width=.95), color='k', ls='--')
 
-    x = df_met.Tair.values - K_TO_C
-    y = df_flx.Qle.values
-    x = x[~np.isnan(y)]
-    y = y[~np.isnan(y)]
-    y = y[~np.isnan(x)]
-    x = x[~np.isnan(x)]
-    gam = LinearGAM(n_splines=20).gridsearch(x, y)
-    XX = generate_X_grid(gam)
-    ax2.plot(XX, gam.predict(XX), 'k-', lw=2.0)
-    #ax2.plot(XX, gam.prediction_intervals(XX, width=.95), color='k', ls='--')
 
-    ax1.set_xlim(0, 45)
-    ax1.set_ylim(0, 40)
-    ax2.set_xlim(0, 45)
-    ax2.set_ylim(0, 600)
-    ax1.set_xlabel("Tair (deg C)")
-    ax1.xaxis.set_label_coords(1.05, -0.1)
-    ax1.set_ylabel(r"GPP (umol m$^{-2}$ s$^{-1}$)")
-    ax2.set_ylabel(r"LE (W m$^{-2}$)")
+    x2 = x[(z>30.)&(z<=35)]
+    y2 = y[(z>30.)&(z<=35)]
+    x1 = x[(z>35.)&(z<=40)]
+    y1 = y[(z>35.)&(z<=40)]
+    x3 = x[(z>40.)]
+    y3 = y[(z>40.)]
 
-    fig.savefig(os.path.join(plot_dir, "%s.pdf" % (site)),
+    ax1.plot(x1, y1, ls=" ", marker="o", label="30-35 deg C",
+             color=colour_list[1], alpha=0.1, zorder=1)
+    ax1.plot(x2, y2, ls=" ", marker="o", label="35-40 deg C",
+             color=colour_list[2], alpha=0.2, zorder=2)
+    ax1.plot(x3, y3, ls=" ", marker="o", label=">40 deg C",
+             color=colour_list[3], alpha=0.3, zorder=10)
+
+    ax1.legend(numpoints=1, loc="best")
+    #ax1.set_xlim(0, 45)
+    #ax1.set_ylim(0, 40)
+    #ax2.set_xlim(0, 45)
+    ax1.set_xlim(0, 300)
+    ax1.set_ylim(0, 25)
+    #ax1.set_xlabel("Tair (deg C)")
+    #ax1.xaxis.set_label_coords(1.05, -0.1)
+    #ax1.set_ylabel(r"GPP (umol m$^{-2}$ s$^{-1}$)")
+    #ax2.set_ylabel(r"LE (W m$^{-2}$)")
+
+    fig.savefig(os.path.join(plot_dir, "%s_scatter.pdf" % (site)),
                 bbox_inches='tight', pad_inches=0.1)
 
+    #sys.exit()
 
 if __name__ == "__main__":
 
