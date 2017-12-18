@@ -19,6 +19,9 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 
+from pygam import LinearGAM
+from pygam.utils import generate_X_grid
+
 def main(flux_dir):
 
     plot_dir = "plots"
@@ -29,11 +32,10 @@ def main(flux_dir):
     met_files = sorted(glob.glob(os.path.join(flux_dir, "*_met.nc")))
 
     for flux_fn, met_fn in zip(flux_files, met_files):
-        (site, df_flux, df_met) = open_file(flux_fn, met_fn)
-
+        (site, df_flx, df_met) = open_file(flux_fn, met_fn)
         print(site)
+        make_plot(plot_dir, site, df_flx, df_met)
 
-        sys.exit()
 
 def open_file(flux_fn, met_fn):
     site = os.path.basename(flux_fn).split("OzFlux")[0]
@@ -44,15 +46,17 @@ def open_file(flux_fn, met_fn):
 
     return (site, df_flx, df_met)
 
-def make_plot(plot_dir, site, df):
+def make_plot(plot_dir, site, df_flx, df_met):
 
-    golden_mean = 0.6180339887498949
-    width = 6*2*(1/golden_mean)
-    height = width * golden_mean
+    K_TO_C = 273.15
 
-    fig = plt.figure(figsize=(width, height))
+    #golden_mean = 0.6180339887498949
+    #width = 6*2*(1/golden_mean)
+    #height = width * golden_mean
+
+    fig = plt.figure(figsize=(14, 4))
     fig.subplots_adjust(hspace=0.1)
-    fig.subplots_adjust(wspace=0.05)
+    fig.subplots_adjust(wspace=0.2)
     plt.rcParams['text.usetex'] = False
     plt.rcParams['font.family'] = "sans-serif"
     plt.rcParams['font.sans-serif'] = "Helvetica"
@@ -80,14 +84,62 @@ def make_plot(plot_dir, site, df):
 
     colour_list = ["#E69F00","#56B4E9", "#009E73", "#CC79A7"]
 
-    ax1.plot(df, df.GPP, ls=" ", marker="o",
-             color=colour_list[0], alpha=0.8)
-    ax2.plot(df, df.Qle, ls=" ", marker="o",
-             color=colour_list[1], alpha=0.8)
+    # Mask crap stuff
+    df_flx.where(df_flx.GPP_qc == 1, inplace=True)
+    df_flx.where(df_flx.Qle_qc == 1, inplace=True)
+    df_flx.where(df_met.Tair_qc == 1, inplace=True)
+
+    df_met.where(df_flx.GPP_qc == 1, inplace=True)
+    df_met.where(df_flx.Qle_qc == 1, inplace=True)
+    df_met.where(df_met.Tair_qc == 1, inplace=True)
+
+    # Mask dew
+    df_met.where(df_flx.Qle > 0., inplace=True)
+    df_flx.where(df_flx.Qle > 0., inplace=True)
+
+    # daylight hours
+    #df_flx = df_flx.between_time("07:00", "20:00")
+    #df_met = df_met.between_time("07:00", "20:00")
+    x = df_met.Tair.values - K_TO_C
+    y = df_flx.GPP.values
+
+
+    ax1.plot(df_met.Tair - K_TO_C, df_flx.GPP, ls=" ", marker="o",
+             color=colour_list[1], alpha=0.05)
+    ax2.plot(df_met.Tair  - K_TO_C, df_flx.Qle, ls=" ", marker="o",
+             color=colour_list[1], alpha=0.05)
+
+    x = x[~np.isnan(y)]
+    y = y[~np.isnan(y)]
+    y = y[~np.isnan(x)]
+    x = x[~np.isnan(x)]
+    gam = LinearGAM(n_splines=20).gridsearch(x, y)
+    XX = generate_X_grid(gam)
+    ax1.plot(XX, gam.predict(XX), 'k-', lw=2.0)
+    #ax1.plot(XX, gam.prediction_intervals(XX, width=.95), color='k', ls='--')
+
+    x = df_met.Tair.values - K_TO_C
+    y = df_flx.Qle.values
+    x = x[~np.isnan(y)]
+    y = y[~np.isnan(y)]
+    y = y[~np.isnan(x)]
+    x = x[~np.isnan(x)]
+    gam = LinearGAM(n_splines=20).gridsearch(x, y)
+    XX = generate_X_grid(gam)
+    ax2.plot(XX, gam.predict(XX), 'k-', lw=2.0)
+    #ax2.plot(XX, gam.prediction_intervals(XX, width=.95), color='k', ls='--')
+
+    ax1.set_xlim(0, 45)
+    ax2.set_xlim(0, 45)
+    ax1.set_xlabel("Tair (deg C)")
+    ax1.xaxis.set_label_coords(1.05, -0.1)
+    ax1.set_ylabel(r"GPP (umol m$^{-2}$ s$^{-1}$)")
+    ax2.set_ylabel(r"LE (W m$^{-2}$)")
 
     fig.savefig(os.path.join(plot_dir, "%s.pdf" % (site)),
                 bbox_inches='tight', pad_inches=0.1)
 
+    sys.exit()
 
 if __name__ == "__main__":
 
