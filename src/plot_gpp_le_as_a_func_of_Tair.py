@@ -105,9 +105,9 @@ def make_plot(plot_dir, site, df_flx, df_met):
 
 
     ax1.plot(df_met.Tair - K_TO_C, df_flx.GPP, ls=" ", marker="o",
-             color=colour_list[1], alpha=0.05)
+             color=colour_list[1], alpha=0.01)
     ax2.plot(df_met.Tair  - K_TO_C, df_flx.Qle, ls=" ", marker="o",
-             color=colour_list[1], alpha=0.05)
+             color=colour_list[1], alpha=0.01)
 
     x = x[~np.isnan(y)]
     y = y[~np.isnan(y)]
@@ -129,8 +129,9 @@ def make_plot(plot_dir, site, df_flx, df_met):
     ax2.plot(XX, gam.predict(XX), 'k-', lw=2.0)
     #ax2.plot(XX, gam.prediction_intervals(XX, width=.95), color='k', ls='--')
 
-    ax1.set_xlim(0, 45)
-    ax2.set_xlim(0, 45)
+    ax1.set_xlim(30, 45)
+    ax1.set_ylim(0, 40)
+    ax2.set_xlim(30, 45)
     ax1.set_xlabel("Tair (deg C)")
     ax1.xaxis.set_label_coords(1.05, -0.1)
     ax1.set_ylabel(r"GPP (umol m$^{-2}$ s$^{-1}$)")
@@ -139,7 +140,6 @@ def make_plot(plot_dir, site, df_flx, df_met):
     fig.savefig(os.path.join(plot_dir, "%s.pdf" % (site)),
                 bbox_inches='tight', pad_inches=0.1)
 
-    sys.exit()
 
 if __name__ == "__main__":
 
