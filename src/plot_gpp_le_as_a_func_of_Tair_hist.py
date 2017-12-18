@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 """
-For each of the Ozflux sites, plot LE & GPP as a function of Tair to probe
-decoupling
+For each of the Ozflux sites, plot LE histogram for different temp ranges. If
+we find what we are looking for we should perhaps see a shift in distribution
+to the right (higher temp) as we shift between temp classes.
 
 That's all folks.
 """
@@ -119,11 +120,13 @@ def make_plot(plot_dir, site, df_flx, df_met):
         y3 = y3[~np.isnan(y3)]
         ax3.hist(y3, 10, normed=1)
 
+    ax1.set_title("<35 deg C")
+    ax2.set_title(">35 & <=40 deg C")
+    ax3.set_title(">40 deg C")
 
-    #ax1.set_xlim(0, 45)
-    #ax1.set_ylim(0, 40)
-    #ax2.set_xlim(0, 45)
-    #ax2.set_ylim(0, 600)
+
+    ax2.set_xlabel(r"LE (W m$^{-2}$)")
+
     #ax1.set_xlabel("Tair (deg C)")
     #ax1.xaxis.set_label_coords(1.05, -0.1)
     #ax1.set_ylabel(r"GPP (umol m$^{-2}$ s$^{-1}$)")
