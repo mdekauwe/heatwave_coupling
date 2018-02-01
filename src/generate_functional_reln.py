@@ -46,8 +46,9 @@ def main(flux_dir):
         (site, df_flx, df_met) = open_file(flux_fn, met_fn)
         print(site)
 
-        if site != "CowBay":
+        if site != "CowBay" and site != "Tumbarumba":
             make_plot(plot_dir, site, df_flx, df_met)
+
 
 def open_file(flux_fn, met_fn):
     site = os.path.basename(flux_fn).split("OzFlux")[0]
@@ -161,8 +162,11 @@ def make_plot(plot_dir, site, df_flx, df_met):
     ax2.set_xlabel("Tair (deg C)")
     ax1.set_ylabel("Daytime flux (W m$^{-2}$)")
     ax1.legend(numpoints=1, loc="best")
-    fig.savefig(os.path.join(plot_dir, "%s.pdf" % (site)),
-                bbox_inches='tight', pad_inches=0.1)
+    #fig.savefig(os.path.join(plot_dir, "%s.pdf" % (site)),
+    #            bbox_inches='tight', pad_inches=0.1)
+
+    fig.savefig(os.path.join(plot_dir, "%s.png" % (site)),
+                bbox_inches='tight', pad_inches=0.1, dpi=100)
 
 
 
