@@ -46,8 +46,8 @@ def main(flux_dir):
         (site, df_flx, df_met) = open_file(flux_fn, met_fn)
         print(site)
 
-        if site != "CowBay" and site != "Tumbarumba":
-            make_plot(plot_dir, site, df_flx, df_met)
+        #if site != "CowBay" and site != "Tumbarumba":
+        make_plot(plot_dir, site, df_flx, df_met)
 
 
 def open_file(flux_fn, met_fn):
@@ -103,14 +103,15 @@ def make_plot(plot_dir, site, df_flx, df_met):
     ax2 = fig.add_subplot(122)
 
     # Mask crap stuff
-    #df_flx.where(df_flx.Qle_qc == 1, inplace=True)
-    #df_flx.where(df_flx.Qh_qc == 1, inplace=True)
+    df_met.where(df_flx.Qle_qc == 1, inplace=True)
+    df_met.where(df_flx.Qh_qc == 1, inplace=True)
+
+    df_flx.where(df_flx.Qle_qc == 1, inplace=True)
+    df_flx.where(df_flx.Qh_qc == 1, inplace=True)
     #df_flx.where(df_met.Tair_qc == 1, inplace=True)
     #df_flx.where(df_met.SWdown == 1, inplace=True)
 
     #df_met.where(df_met.SWdown == 1, inplace=True)
-    #df_met.where(df_flx.Qh_qc == 1, inplace=True)
-    #df_met.where(df_flx.Qle_qc == 1, inplace=True)
     #df_met.where(df_met.Tair_qc == 1, inplace=True)
 
     # Mask dew
@@ -120,53 +121,57 @@ def make_plot(plot_dir, site, df_flx, df_met):
     df_flx.dropna(inplace=True)
     df_met.dropna(inplace=True)
 
-    alpha = 0.07
 
-    # < "Midday" data
-    df_flx = df_flx.between_time("09:00", "13:00")
-    df_met = df_met.between_time("09:00", "13:00")
+    if len(df_flx) > 0 and len(df_met) > 0:
+        print(site, len(df_flx), len(df_met))
 
-    ax1.plot(df_met.SWdown, df_flx.Qle, ls=" ", marker="o",
-             color="salmon", alpha=alpha)
-    ax1.plot(df_met.SWdown, df_flx.Qh, ls=" ", marker="o",
-             color="royalblue", alpha=alpha)
+        alpha = 0.07
 
-    gam = LinearGAM(n_splines=20).gridsearch(df_met.SWdown, df_flx.Qle)
-    XX = generate_X_grid(gam)
-    ax1.plot(XX, gam.predict(XX), color="salmon", ls='-', lw=2.0, label="Qle")
+        # < "Midday" data
+        df_flx = df_flx.between_time("09:00", "13:00")
+        df_met = df_met.between_time("09:00", "13:00")
 
-    gam = LinearGAM(n_splines=20).gridsearch(df_met.SWdown, df_flx.Qh)
-    XX = generate_X_grid(gam)
-    ax1.plot(XX, gam.predict(XX), color="royalblue", ls='-', lw=2.0, label="Qh")
+        ax1.plot(df_met.SWdown, df_flx.Qle, ls=" ", marker="o",
+                 color="salmon", alpha=alpha)
+        ax1.plot(df_met.SWdown, df_flx.Qh, ls=" ", marker="o",
+                 color="royalblue", alpha=alpha)
 
-    ax2.plot(df_met.Tair - K_TO_C, df_flx.Qle, ls=" ", marker="o",
-             color="salmon", alpha=alpha, label="Qle")
-    ax2.plot(df_met.Tair - K_TO_C, df_flx.Qh, ls=" ", marker="o",
-             color="royalblue", alpha=alpha, label="Qh")
+        gam = LinearGAM(n_splines=20).gridsearch(df_met.SWdown, df_flx.Qle)
+        XX = generate_X_grid(gam)
+        ax1.plot(XX, gam.predict(XX), color="salmon", ls='-', lw=2.0, label="Qle")
 
-    gam = LinearGAM(n_splines=20).gridsearch(df_met.Tair - K_TO_C, df_flx.Qle)
-    XX = generate_X_grid(gam)
-    ax2.plot(XX, gam.predict(XX), color="salmon", ls='-', lw=2.0)
+        gam = LinearGAM(n_splines=20).gridsearch(df_met.SWdown, df_flx.Qh)
+        XX = generate_X_grid(gam)
+        ax1.plot(XX, gam.predict(XX), color="royalblue", ls='-', lw=2.0, label="Qh")
 
-    gam = LinearGAM(n_splines=20).gridsearch(df_met.Tair - K_TO_C, df_flx.Qh)
-    XX = generate_X_grid(gam)
-    ax2.plot(XX, gam.predict(XX), color="royalblue", ls='-', lw=2.0)
+        ax2.plot(df_met.Tair - K_TO_C, df_flx.Qle, ls=" ", marker="o",
+                 color="salmon", alpha=alpha, label="Qle")
+        ax2.plot(df_met.Tair - K_TO_C, df_flx.Qh, ls=" ", marker="o",
+                 color="royalblue", alpha=alpha, label="Qh")
 
-    plt.setp(ax2.get_yticklabels(), visible=False)
+        gam = LinearGAM(n_splines=20).gridsearch(df_met.Tair - K_TO_C, df_flx.Qle)
+        XX = generate_X_grid(gam)
+        ax2.plot(XX, gam.predict(XX), color="salmon", ls='-', lw=2.0)
 
-    ax1.set_xlim(0, 2000)
-    ax1.set_ylim(0, 1000)
-    ax2.set_xlim(0, 45)
-    ax2.set_ylim(0, 1000)
-    ax1.set_xlabel("SW down (W m$^{-2}$)")
-    ax2.set_xlabel("Tair (deg C)")
-    ax1.set_ylabel("Daytime flux (W m$^{-2}$)")
-    ax1.legend(numpoints=1, loc="best")
-    #fig.savefig(os.path.join(plot_dir, "%s.pdf" % (site)),
-    #            bbox_inches='tight', pad_inches=0.1)
+        gam = LinearGAM(n_splines=20).gridsearch(df_met.Tair - K_TO_C, df_flx.Qh)
+        XX = generate_X_grid(gam)
+        ax2.plot(XX, gam.predict(XX), color="royalblue", ls='-', lw=2.0)
 
-    fig.savefig(os.path.join(plot_dir, "%s.png" % (site)),
-                bbox_inches='tight', pad_inches=0.1, dpi=100)
+        plt.setp(ax2.get_yticklabels(), visible=False)
+
+        ax1.set_xlim(0, 1300)
+        ax1.set_ylim(0, 1000)
+        ax2.set_xlim(0, 45)
+        ax2.set_ylim(0, 1000)
+        ax1.set_xlabel("SW down (W m$^{-2}$)")
+        ax2.set_xlabel("Tair (deg C)")
+        ax1.set_ylabel("Daytime flux (W m$^{-2}$)")
+        ax1.legend(numpoints=1, loc="best")
+        #fig.savefig(os.path.join(plot_dir, "%s.pdf" % (site)),
+        #            bbox_inches='tight', pad_inches=0.1)
+
+        fig.savefig(os.path.join(plot_dir, "%s.png" % (site)),
+                    bbox_inches='tight', pad_inches=0.1, dpi=100)
 
 
 
