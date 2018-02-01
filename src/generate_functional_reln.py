@@ -45,7 +45,9 @@ def main(flux_dir):
     for flux_fn, met_fn in zip(flux_files, met_files):
         (site, df_flx, df_met) = open_file(flux_fn, met_fn)
         print(site)
-        make_plot(plot_dir, site, df_flx, df_met)
+
+        if site != "CowBay":
+            make_plot(plot_dir, site, df_flx, df_met)
 
 def open_file(flux_fn, met_fn):
     site = os.path.basename(flux_fn).split("OzFlux")[0]
@@ -73,7 +75,7 @@ def make_plot(plot_dir, site, df_flx, df_met):
 
     fig = plt.figure(figsize=(14, 4))
     fig.subplots_adjust(hspace=0.1)
-    fig.subplots_adjust(wspace=0.2)
+    fig.subplots_adjust(wspace=0.1)
     plt.rcParams['text.usetex'] = False
     plt.rcParams['font.family'] = "sans-serif"
     plt.rcParams['font.sans-serif'] = "Helvetica"
@@ -149,6 +151,7 @@ def make_plot(plot_dir, site, df_flx, df_met):
     XX = generate_X_grid(gam)
     ax2.plot(XX, gam.predict(XX), color="royalblue", ls='-', lw=2.0)
 
+    plt.setp(ax2.get_yticklabels(), visible=False)
 
     ax1.set_xlim(0, 2000)
     ax1.set_ylim(0, 1000)
@@ -156,6 +159,7 @@ def make_plot(plot_dir, site, df_flx, df_met):
     ax2.set_ylim(0, 1000)
     ax1.set_xlabel("SW down (W m$^{-2}$)")
     ax2.set_xlabel("Tair (deg C)")
+    ax1.set_ylabel("Daytime flux (W m$^{-2}$)")
     ax1.legend(numpoints=1, loc="best")
     fig.savefig(os.path.join(plot_dir, "%s.pdf" % (site)),
                 bbox_inches='tight', pad_inches=0.1)
