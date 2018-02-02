@@ -49,6 +49,7 @@ def main(flux_dir):
         #if site != "CowBay" and site != "Tumbarumba":
         make_plot(plot_dir, site, df_flx, df_met)
 
+        sys.exit()
 
 def open_file(flux_fn, met_fn):
     site = os.path.basename(flux_fn).split("OzFlux")[0]
@@ -138,11 +139,17 @@ def make_plot(plot_dir, site, df_flx, df_met):
 
         gam = LinearGAM(n_splines=20).gridsearch(df_met.SWdown, df_flx.Qle)
         XX = generate_X_grid(gam)
-        ax1.plot(XX, gam.predict(XX), color="salmon", ls='-', lw=2.0, label="Qle")
+        ax1.plot(XX, gam.predict(XX), color="salmon", ls='-', lw=2.0,
+                 label="Qle")
+        ax1.plot(XX, gam.prediction_intervals(XX, width=.95), color='salmon',
+                 ls='--')
 
         gam = LinearGAM(n_splines=20).gridsearch(df_met.SWdown, df_flx.Qh)
         XX = generate_X_grid(gam)
-        ax1.plot(XX, gam.predict(XX), color="royalblue", ls='-', lw=2.0, label="Qh")
+        ax1.plot(XX, gam.predict(XX), color="royalblue", ls='-', lw=2.0,
+                 label="Qh")
+        ax1.plot(XX, gam.prediction_intervals(XX, width=.95), color='royalblue',
+                 ls='--')
 
         ax2.plot(df_met.Tair - K_TO_C, df_flx.Qle, ls=" ", marker="o",
                  color="salmon", alpha=alpha, label="Qle")
@@ -152,11 +159,14 @@ def make_plot(plot_dir, site, df_flx, df_met):
         gam = LinearGAM(n_splines=20).gridsearch(df_met.Tair - K_TO_C, df_flx.Qle)
         XX = generate_X_grid(gam)
         ax2.plot(XX, gam.predict(XX), color="salmon", ls='-', lw=2.0)
+        ax2.plot(XX, gam.prediction_intervals(XX, width=.95), color='salmon',
+                 ls='--')
 
         gam = LinearGAM(n_splines=20).gridsearch(df_met.Tair - K_TO_C, df_flx.Qh)
         XX = generate_X_grid(gam)
         ax2.plot(XX, gam.predict(XX), color="royalblue", ls='-', lw=2.0)
-
+        ax2.plot(XX, gam.prediction_intervals(XX, width=.95), color='royalblue',
+                 ls='--')
         plt.setp(ax2.get_yticklabels(), visible=False)
 
         ax1.set_xlim(0, 1300)
