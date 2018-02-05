@@ -35,6 +35,14 @@ def main(flux_dir):
              "Samford","SturtPlains","Tumbarumba","Whroo",\
              "WombatStateForest","Yanco"]
 
+    pfts = ["SAV","SHB","TRF","TRF","EBF","GRA","SAV",\
+            "SAV","NA","EBF","EBF",\
+            "SAV","GRA","NA","GRA",\
+            "GRA","GRA","EBF","EBF",\
+            "EBF","GRA"]
+
+    d = dict(zip(sites, pfts))
+
     plot_dir = "plots"
     if not os.path.exists(plot_dir):
         os.makedirs(plot_dir)
