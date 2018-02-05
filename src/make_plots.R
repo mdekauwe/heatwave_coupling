@@ -1,10 +1,13 @@
 library(ggplot2)
 library(cowplot)
 
-theme_set(theme_cowplot(font_size=12)) # reduce default font size
-fname = "/Users/mdekauwe/Desktop/x.csv"
-df <- read.csv(file=fname, header=TRUE, sep=",")
 
+fname = "data/ozflux_fluxes.csv"
+df <- read.csv(file=fname, header=TRUE, sep=",")
+df <- subset(df, PFT=="GRA")
+
+
+theme_set(theme_cowplot(font_size=12))
 ax1 <- ggplot(df) +
   geom_point(aes(x=SW, y=Qle), colour="blue", alpha=0.06) +
   geom_point(aes(x=SW, y=Qh), colour="red", alpha=0.06) +
