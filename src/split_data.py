@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 
 """
-As in Teuling et al., generate plots of functional relationships between midday surface fluxes of sensible heat, latent heat and environmental conditions for the Ozflux sites.
+As in Teuling et al., generate plots of functional relationships between
+midday surface fluxes of sensible heat, latent heat and environmental
+conditions for the Ozflux sites.
 
 Split the data by PFT and plot in R
 
 Reference:
 ==========
-* Teuling et al. (2010) Contrasting response of European for- est and grassland energy exchange to heatwaves, Nat. Geosci., 3, 722–727.
+* Teuling et al. (2010) Contrasting response of European for- est and grassland
+energy exchange to heatwaves, Nat. Geosci., 3, 722–727.
 
 That's all folks.
 """

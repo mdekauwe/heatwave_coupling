@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
 """
-As in Teuling et al., generate plots of functional relationships between midday surface fluxes of sensible heat, latent heat and environmental conditions for the Ozflux sites.
+As in Teuling et al., generate plots of functional relationships between midday
+surface fluxes of sensible heat, latent heat and environmental conditions for
+the Ozflux sites.
 
 Reference:
 ==========
-* Teuling et al. (2010) Contrasting response of European for- est and grassland energy exchange to heatwaves, Nat. Geosci., 3, 722–727.
+* Teuling et al. (2010) Contrasting response of European for- est and grassland
+energy exchange to heatwaves, Nat. Geosci., 3, 722–727.
 
 That's all folks.
 """
@@ -49,6 +52,7 @@ def main(flux_dir):
 
     flux_files = sorted(glob.glob(os.path.join(flux_dir, "*_flux.nc")))
     met_files = sorted(glob.glob(os.path.join(flux_dir, "*_met.nc")))
+
 
     for flux_fn, met_fn in zip(flux_files, met_files):
         (site, df_flx, df_met) = open_file(flux_fn, met_fn)
