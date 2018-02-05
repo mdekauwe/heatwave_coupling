@@ -7,7 +7,7 @@ the Ozflux sites.
 
 Reference:
 ==========
-* Teuling et al. (2010) Contrasting response of European for- est and grassland
+* Teuling et al. (2010) Contrasting response of European forest and grassland
 energy exchange to heatwaves, Nat. Geosci., 3, 722–727.
 
 That's all folks.
