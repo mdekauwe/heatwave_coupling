@@ -153,14 +153,14 @@ def make_plot(plot_dir, site, df_flx, df_met):
         XX = generate_X_grid(gam)
         ax1.plot(XX, gam.predict(XX), color="salmon", ls='-', lw=2.0,
                  label="Qle")
-        ax1.plot(XX, gam.prediction_intervals(XX, width=.95), color='salmon',
+        ax1.plot(XX, gam.confidence_intervals(XX, width=.95), color='salmon',
                  ls='--')
 
         gam = LinearGAM(n_splines=20).gridsearch(df_met.SWdown, df_flx.Qh)
         XX = generate_X_grid(gam)
         ax1.plot(XX, gam.predict(XX), color="royalblue", ls='-', lw=2.0,
                  label="Qh")
-        ax1.plot(XX, gam.prediction_intervals(XX, width=.95), color='royalblue',
+        ax1.plot(XX, gam.confidence_intervals(XX, width=.95), color='royalblue',
                  ls='--')
 
         ax2.plot(df_met.Tair - K_TO_C, df_flx.Qle, ls=" ", marker="o",
@@ -171,13 +171,13 @@ def make_plot(plot_dir, site, df_flx, df_met):
         gam = LinearGAM(n_splines=20).gridsearch(df_met.Tair - K_TO_C, df_flx.Qle)
         XX = generate_X_grid(gam)
         ax2.plot(XX, gam.predict(XX), color="salmon", ls='-', lw=2.0)
-        ax2.plot(XX, gam.prediction_intervals(XX, width=.95), color='salmon',
+        ax2.plot(XX, gam.confidence_intervals(XX, width=.95), color='salmon',
                  ls='--')
 
         gam = LinearGAM(n_splines=20).gridsearch(df_met.Tair - K_TO_C, df_flx.Qh)
         XX = generate_X_grid(gam)
         ax2.plot(XX, gam.predict(XX), color="royalblue", ls='-', lw=2.0)
-        ax2.plot(XX, gam.prediction_intervals(XX, width=.95), color='royalblue',
+        ax2.plot(XX, gam.confidence_intervals(XX, width=.95), color='royalblue',
                  ls='--')
         plt.setp(ax2.get_yticklabels(), visible=False)
 
