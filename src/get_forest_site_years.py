@@ -49,57 +49,8 @@ def main(flux_dir):
         (site, df_flx, df_met) = open_file(flux_fn, met_fn)
         #print(site)
         # Mask crap stuff
-        df_flx.where(df_flx.Qle_qc == 1, inplace=True)
-        df_flx.where(df_met.Tair_qc == 1, inplace=True)
-
-        df_met.where(df_flx.Qle_qc == 1, inplace=True)
-        df_met.where(df_met.Tair_qc == 1, inplace=True)
-
-        # Mask dew
-        df_met.where(df_flx.Qle > 0., inplace=True)
-        df_flx.where(df_flx.Qle > 0., inplace=True)
-
-        df_met = df_met.reset_index()
-        df_met = df_met.set_index('time')
-        df_flx = df_flx.reset_index()
-        df_flx = df_flx.set_index('time')
-
-        # daylight hours
-        df_flx = df_flx.between_time("07:00", "18:00")
-        df_met = df_met.between_time("07:00", "18:00")
-
-        w, miss = get_three_most_hottest_weeks(df_met)
-
-        df_met_w = df_met[(df_met.index.week == w[0]) |
-                          (df_met.index.week == w[1]) |
-                          (df_met.index.week == w[2])]
-        df_flx_w = df_flx[(df_flx.index.week == w[0]) |
-                          (df_flx.index.week == w[1]) |
-                          (df_flx.index.week == w[2])]
-
-        x = df_met_w.Tair.values - c.DEG_2_KELVIN
-        y = df_flx_w.Qle.values
-
-        x = x[~np.isnan(y)]
-        y = y[~np.isnan(y)]
-        y = y[~np.isnan(x)]
-        x = x[~np.isnan(x)]
-        from scipy.stats import pearsonr
-
-        rwk = pearsonr(x,y)[0]
-
-        x = df_met.Tair.values - c.DEG_2_KELVIN
-        y = df_flx.Qle.values
-
-        x = x[~np.isnan(y)]
-        y = y[~np.isnan(y)]
-        y = y[~np.isnan(x)]
-        x = x[~np.isnan(x)]
-
-
-        r = pearsonr(x,y)[0]
-
-        print(site, d[site], round(r,2), round(rwk,2))
+        if d[site] == "EBF":
+            print(site, np.unique(df_flx.index.year))
 
 def get_three_most_hottest_weeks(df):
     df_w = df.resample("W").mean()
