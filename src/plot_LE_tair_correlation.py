@@ -23,6 +23,21 @@ import constants as c
 
 def main(flux_dir):
 
+    sites = ["AdelaideRiver","Calperum","CapeTribulation","CowBay",\
+             "CumberlandPlains","DalyPasture","DalyUncleared",\
+             "DryRiver","Emerald","Gingin","GreatWesternWoodlands",\
+             "HowardSprings","Otway","RedDirtMelonFarm","RiggsCreek",\
+             "Samford","SturtPlains","Tumbarumba","Whroo",\
+             "WombatStateForest","Yanco"]
+
+    pfts = ["SAV","SHB","TRF","TRF","EBF","GRA","SAV",\
+            "SAV","NA","EBF","EBF",\
+            "SAV","GRA","NA","GRA",\
+            "GRA","GRA","EBF","EBF",\
+            "EBF","GRA"]
+
+    d = dict(zip(sites, pfts))
+
     plot_dir = "plots"
     if not os.path.exists(plot_dir):
         os.makedirs(plot_dir)
@@ -82,7 +97,7 @@ def main(flux_dir):
 
         r = pearsonr(x,y)[0]
 
-        print(site, r, rwk)
+        print(site, d[site], round(r,2), round(rwk,2))
 
 def get_three_most_hottest_weeks(df):
     df_w = df.resample("W").mean()
@@ -95,7 +110,7 @@ def get_three_most_hottest_weeks(df):
     except KeyError:
         missing = True
         weeks = None
-    
+
     return (weeks, missing)
 
 def open_file(flux_fn, met_fn):
