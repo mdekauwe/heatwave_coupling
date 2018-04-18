@@ -106,7 +106,7 @@ def get_three_most_hottest_weeks(df):
 
     try:
         df_w = df_w.sort_values("Tair", ascending=False)[:3]
-        weeks = df_w.index.month
+        weeks = df_w.index.week
     except KeyError:
         missing = True
         weeks = None
