@@ -83,10 +83,10 @@ def main(flux_dir):
         r = pearsonr(x,y)[0]
 
         print(site, r, rwk)
-        sys.exit()
+
 def get_three_most_hottest_weeks(df):
     df_w = df.resample("W").mean()
-    
+
     missing = False
 
     try:
@@ -95,7 +95,7 @@ def get_three_most_hottest_weeks(df):
     except KeyError:
         missing = True
         weeks = None
-    print(weeks)
+    
     return (weeks, missing)
 
 def open_file(flux_fn, met_fn):
