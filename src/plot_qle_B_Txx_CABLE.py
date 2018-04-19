@@ -22,7 +22,7 @@ import pandas as pd
 
 import constants as c
 
-def main(flux_dir):
+def main(flux_dir, cable_dir):
 
     sites = ["AdelaideRiver","Calperum","CapeTribulation","CowBay",\
              "CumberlandPlains","DalyPasture","DalyUncleared",\
@@ -43,27 +43,29 @@ def main(flux_dir):
     if not os.path.exists(plot_dir):
         os.makedirs(plot_dir)
 
+    cable_files = sorted(glob.glob(os.path.join(cable_dir, "*_out.nc")))
     flux_files = sorted(glob.glob(os.path.join(flux_dir, "*_flux.nc")))
     met_files = sorted(glob.glob(os.path.join(flux_dir, "*_met.nc")))
 
     allx = {}
     sites = []
-    for flux_fn, met_fn in zip(flux_files, met_files):
-        (site, df_flx, df_met) = open_file(flux_fn, met_fn)
-        #print(site)
+    for cable_fn, flux_fn, met_fn in zip(cable_files, flux_files, met_files):
+        (site, df_mod, df_flx, df_met) = open_file(cable_fn, flux_fn, met_fn)
+        print(site)
 
         # daylight hours
+        df_mod = df_mod.between_time("06:00", "20:00")
         df_flx = df_flx.between_time("06:00", "20:00")
         df_met = df_met.between_time("06:00", "20:00")
 
-        (df_flx, df_met) = mask_crap_days(df_flx, df_met)
+        (df_mod, df_flx, df_met) = mask_crap_days(df_mod, df_flx, df_met)
         df_met.Tair -= c.DEG_2_KELVIN
 
         allx[site] = {}
 
         #if d[site] == "EBF" or d[site] == "SAV" or d[site] == "TRF":
         if d[site] == "EBF" or d[site] == "SAV":
-            (Tairs, Qles, B) = get_hottest_day(df_flx, df_met)
+            (Tairs, Qles, B) = get_hottest_day(df_mod, df_met)
 
             allx[site]["Tair"] = Tairs
             allx[site]["Qle"] = Qles
@@ -91,6 +93,7 @@ def main(flux_dir):
     ax1 = fig.add_subplot(121)
     ax2 = fig.add_subplot(122)
 
+
     for site in sites:
         #print(site)
         #print(allx[site]["Tair"])
@@ -112,9 +115,9 @@ def main(flux_dir):
                 bbox_inches='tight', pad_inches=0.1)
     plt.show()
 
-def get_hottest_day(df_flx, df_met):
+def get_hottest_day(df_mod, df_met):
     df_dm = df_met.resample("D").max()
-    df_df = df_flx.resample("D").mean()
+    df_df = df_mod.resample("D").mean()
 
     Txx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
     Txx_idx_minus_five = Txx_idx - pd.Timedelta(4, unit='d')
@@ -132,12 +135,15 @@ def get_hottest_day(df_flx, df_met):
     return(Tairs, Qles, B)
 
 
-def mask_crap_days(df_flx, df_met):
+def mask_crap_days(df_mod, df_flx, df_met):
     # Mask crap stuff
     df_flx.where(df_flx.Qle_qc == 1, inplace=True)
     df_flx.where(df_flx.Qh_qc == 1, inplace=True)
     df_flx.where(df_met.Tair_qc == 1, inplace=True)
 
+    df_mod.where(df_flx.Qle_qc == 1, inplace=True)
+    df_mod.where(df_flx.Qh_qc == 1, inplace=True)
+    df_mod.where(df_met.Tair_qc == 1, inplace=True)
 
     df_met.where(df_flx.Qle_qc == 1, inplace=True)
     df_met.where(df_flx.Qh_qc == 1, inplace=True)
@@ -145,21 +151,30 @@ def mask_crap_days(df_flx, df_met):
 
     # Mask dew
     df_met.where(df_flx.Qle > 0., inplace=True)
+    df_mod.where(df_flx.Qle > 0., inplace=True)
     df_flx.where(df_flx.Qle > 0., inplace=True)
 
     df_met = df_met.reset_index()
     df_met = df_met.set_index('time')
     df_flx = df_flx.reset_index()
     df_flx = df_flx.set_index('time')
+    df_mod = df_mod.reset_index()
+    df_mod = df_mod.set_index('time')
 
-    return df_flx, df_met
+    return df_mod, df_flx, df_met
 
-def open_file(flux_fn, met_fn):
+def open_file(cable_fn, flux_fn, met_fn):
     site = os.path.basename(flux_fn).split("OzFlux")[0]
     ds = xr.open_dataset(flux_fn)
     df_flx = ds.squeeze(dim=["x","y"], drop=True).to_dataframe()
     ds = xr.open_dataset(met_fn)
     df_met = ds.squeeze(dim=["x","y"], drop=True).to_dataframe()
+
+    ds = xr.open_dataset(cable_fn)
+    time = pd.to_datetime(ds.time.values)
+    df_mod = ds[['Qle','Qh']].squeeze(drop=True).to_dataframe()
+    df_mod['time'] = time
+    df_mod = df_mod.set_index('time')
 
     df_met = df_met.reset_index()
     df_met = df_met.set_index('time')
@@ -167,9 +182,11 @@ def open_file(flux_fn, met_fn):
     df_flx = df_flx.reset_index()
     df_flx = df_flx.set_index('time')
 
-    return (site, df_flx, df_met)
+    return (site, df_mod, df_flx, df_met)
 
 if __name__ == "__main__":
 
     flux_dir = "/Users/mdekauwe/research/OzFlux"
-    main(flux_dir)
+    cable_dir = "/Users/mdekauwe/research/CABLE_runs/runs/ozflux/outputs"
+
+    main(flux_dir, cable_dir)
