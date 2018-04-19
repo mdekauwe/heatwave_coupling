@@ -70,8 +70,12 @@ def main(flux_dir):
             allx[site]["B"] = B
             sites.append(site)
 
-    width  = 18.0
-    height = width / 1.618
+    #width  = 12.0
+    #height = width / 1.618
+    #print(width, height)
+    #sys.exit()
+    width = 20
+    height = 6
     fig = plt.figure(figsize=(width, height))
     fig.subplots_adjust(hspace=0.1)
     fig.subplots_adjust(wspace=0.1)
@@ -101,6 +105,7 @@ def main(flux_dir):
     ax1.set_ylabel('Temperature ($^\circ$C)', position=(1.0, 0.5))
     ax1.set_ylabel("Qle (W m$^{-2}$)")
     ax2.set_ylabel("B (-)")
+    ax1.legend(numpoints=1, loc="best", ncol=1, frameon=False)
     fig.savefig("/Users/mdekauwe/Desktop/Qle_bowen_Txx_minus5.pdf",
                 bbox_inches='tight', pad_inches=0.1)
     fig.savefig("/Users/mdekauwe/Desktop/Qle_bowen_Txx_minus5.png", dpi=150,
