@@ -98,11 +98,11 @@ def main(flux_dir):
         #print(allx[site]["B"])
         #print("\n")
 
-        ax1.plot(allx[site]["Tair"], allx[site]["Qle"], label=site, ls="--",
+        ax1.plot(allx[site]["Tair"], allx[site]["Qle"], label=site, ls="-",
                  marker="o")
-        ax2.plot(allx[site]["Tair"], allx[site]["B"], label=site, ls="--",
+        ax2.plot(allx[site]["Tair"], allx[site]["B"], label=site, ls="-",
                  marker="o")
-    ax1.set_ylabel('Temperature ($^\circ$C)', position=(1.0, 0.5))
+    ax1.set_xlabel('Temperature ($^\circ$C)', position=(1.0, 0.5))
     ax1.set_ylabel("Qle (W m$^{-2}$)")
     ax2.set_ylabel("B (-)")
     ax1.legend(numpoints=1, loc="best", ncol=1, frameon=False)
