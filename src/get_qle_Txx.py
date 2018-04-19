@@ -18,6 +18,7 @@ import netCDF4 as nc
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
+import pandas as pd
 
 import constants as c
 
@@ -45,26 +46,87 @@ def main(flux_dir):
     flux_files = sorted(glob.glob(os.path.join(flux_dir, "*_flux.nc")))
     met_files = sorted(glob.glob(os.path.join(flux_dir, "*_met.nc")))
 
+    allx = {}
+    sites = []
     for flux_fn, met_fn in zip(flux_files, met_files):
         (site, df_flx, df_met) = open_file(flux_fn, met_fn)
         #print(site)
+
+        # daylight hours
+        df_flx = df_flx.between_time("06:00", "20:00")
+        df_met = df_met.between_time("06:00", "20:00")
+
+        (df_flx, df_met) = mask_crap_days(df_flx, df_met)
+        df_met.Tair -= c.DEG_2_KELVIN
+
+        allx[site] = {}
         # Mask crap stuff
         if d[site] == "EBF" or d[site] == "SAV" or d[site] == "TRF":
-            print(site, np.unique(df_flx.index.year))
+            (Tairs, Qles) = get_hottest_day(df_flx, df_met)
 
-def get_three_most_hottest_weeks(df):
-    df_w = df.resample("W").mean()
+            allx[site]["Tair"] = Tairs
+            allx[site]["Qle"] = Qles
+            sites.append(site)
 
-    missing = False
+    fig = plt.figure(figsize=(9, 6))
+    fig.subplots_adjust(hspace=0.1)
+    fig.subplots_adjust(wspace=0.2)
+    plt.rcParams['text.usetex'] = False
+    plt.rcParams['font.family'] = "sans-serif"
+    plt.rcParams['font.sans-serif'] = "Helvetica"
+    plt.rcParams['axes.labelsize'] = 14
+    plt.rcParams['font.size'] = 14
+    plt.rcParams['legend.fontsize'] = 14
+    plt.rcParams['xtick.labelsize'] = 14
+    plt.rcParams['ytick.labelsize'] = 14
 
-    try:
-        df_w = df_w.sort_values("Tair", ascending=False)[:3]
-        weeks = df_w.index.week
-    except KeyError:
-        missing = True
-        weeks = None
+    ax1 = fig.add_subplot(111)
 
-    return (weeks, missing)
+    for site in sites:
+        print(site)
+        print(allx[site]["Tair"])
+        print(allx[site]["Qle"])
+        print("\n")
+
+        ax1.plot(allx[site]["Tair"], allx[site]["Qle"], label=site)
+    ax1.legend(numpoints=1, loc="best")
+    plt.show()
+
+def get_hottest_day(df_flx, df_met):
+    df_dm = df_met.resample("D").mean()
+    df_df = df_flx.resample("D").mean()
+
+    Txx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
+    Txx_idx_minus_five = Txx_idx - pd.Timedelta(4, unit='d')
+
+
+
+    Tairs = df_dm[(df_dm.index >= Txx_idx_minus_five) &
+                 (df_dm.index <= Txx_idx)].Tair.values
+    Qles = df_df[(df_dm.index >= Txx_idx_minus_five) &
+                 (df_dm.index <= Txx_idx)].Qle.values
+
+    return(Tairs, Qles)
+
+
+def mask_crap_days(df_flx, df_met):
+    # Mask crap stuff
+    df_flx.where(df_flx.Qle_qc == 1, inplace=True)
+    df_flx.where(df_met.Tair_qc == 1, inplace=True)
+
+    df_met.where(df_flx.Qle_qc == 1, inplace=True)
+    df_met.where(df_met.Tair_qc == 1, inplace=True)
+
+    # Mask dew
+    df_met.where(df_flx.Qle > 0., inplace=True)
+    df_flx.where(df_flx.Qle > 0., inplace=True)
+
+    df_met = df_met.reset_index()
+    df_met = df_met.set_index('time')
+    df_flx = df_flx.reset_index()
+    df_flx = df_flx.set_index('time')
+
+    return df_flx, df_met
 
 def open_file(flux_fn, met_fn):
     site = os.path.basename(flux_fn).split("OzFlux")[0]
