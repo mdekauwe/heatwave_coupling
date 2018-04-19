@@ -60,38 +60,50 @@ def main(flux_dir):
         df_met.Tair -= c.DEG_2_KELVIN
 
         allx[site] = {}
-        # Mask crap stuff
-        if d[site] == "EBF" or d[site] == "SAV" or d[site] == "TRF":
-            (Tairs, Qles) = get_hottest_day(df_flx, df_met)
+
+        #if d[site] == "EBF" or d[site] == "SAV" or d[site] == "TRF":
+        if d[site] == "EBF" or d[site] == "SAV":
+            (Tairs, Qles, B) = get_hottest_day(df_flx, df_met)
 
             allx[site]["Tair"] = Tairs
             allx[site]["Qle"] = Qles
+            allx[site]["B"] = B
             sites.append(site)
 
-    fig = plt.figure(figsize=(9, 6))
+    width  = 20.0
+    height = width / 1.618
+    fig = plt.figure(figsize=(width, height))
     fig.subplots_adjust(hspace=0.1)
-    fig.subplots_adjust(wspace=0.2)
+    fig.subplots_adjust(wspace=0.1)
     plt.rcParams['text.usetex'] = False
     plt.rcParams['font.family'] = "sans-serif"
     plt.rcParams['font.sans-serif'] = "Helvetica"
     plt.rcParams['axes.labelsize'] = 14
     plt.rcParams['font.size'] = 14
-    plt.rcParams['legend.fontsize'] = 14
+    plt.rcParams['legend.fontsize'] = 10
     plt.rcParams['xtick.labelsize'] = 14
     plt.rcParams['ytick.labelsize'] = 14
 
-    ax1 = fig.add_subplot(111)
+    ax1 = fig.add_subplot(121)
+    ax2 = fig.add_subplot(122)
 
     for site in sites:
         print(site)
         print(allx[site]["Tair"])
         print(allx[site]["Qle"])
+        print(allx[site]["B"])
         print("\n")
 
         ax1.plot(allx[site]["Tair"], allx[site]["Qle"], label=site, ls="--",
                  marker="o")
-    ax1.legend(numpoints=1, loc="best")
-    plt.show()
+        ax2.plot(allx[site]["Tair"], allx[site]["B"], label=site, ls="--",
+                 marker="o")
+    ax1.set_ylabel('Temperature ($^\circ$C)', position=(1.0, 0.5))
+    ax1.set_ylabel("Qle (W m${-2}$)")
+    ax2.set_ylabel("B (-)")
+    ax1.legend(numpoints=1, loc="best", ncol=1, frameon=False)
+    fig.savefig("/Users/mdekauwe/Desktop/Qle_bowen_Txx_minus5.pdf",
+                bbox_inches='tight', pad_inches=0.1)
 
 def get_hottest_day(df_flx, df_met):
     df_dm = df_met.resample("D").max()
@@ -106,16 +118,22 @@ def get_hottest_day(df_flx, df_met):
                  (df_dm.index <= Txx_idx)].Tair.values
     Qles = df_df[(df_dm.index >= Txx_idx_minus_five) &
                  (df_dm.index <= Txx_idx)].Qle.values
+    Qhs = df_df[(df_dm.index >= Txx_idx_minus_five) &
+                 (df_dm.index <= Txx_idx)].Qh.values
+    B = Qhs / Qles
 
-    return(Tairs, Qles)
+    return(Tairs, Qles, B)
 
 
 def mask_crap_days(df_flx, df_met):
     # Mask crap stuff
     df_flx.where(df_flx.Qle_qc == 1, inplace=True)
+    df_flx.where(df_flx.Qh_qc == 1, inplace=True)
     df_flx.where(df_met.Tair_qc == 1, inplace=True)
 
+
     df_met.where(df_flx.Qle_qc == 1, inplace=True)
+    df_met.where(df_flx.Qh_qc == 1, inplace=True)
     df_met.where(df_met.Tair_qc == 1, inplace=True)
 
     # Mask dew
