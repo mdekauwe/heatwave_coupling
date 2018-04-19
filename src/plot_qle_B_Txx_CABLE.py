@@ -51,7 +51,6 @@ def main(flux_dir, cable_dir):
     sites = []
     for cable_fn, flux_fn, met_fn in zip(cable_files, flux_files, met_files):
         (site, df_mod, df_flx, df_met) = open_file(cable_fn, flux_fn, met_fn)
-        print(site)
 
         # daylight hours
         df_mod = df_mod.between_time("06:00", "20:00")
@@ -66,7 +65,6 @@ def main(flux_dir, cable_dir):
         #if d[site] == "EBF" or d[site] == "SAV" or d[site] == "TRF":
         if d[site] == "EBF" or d[site] == "SAV":
             (Tairs, Qles, B) = get_hottest_day(df_mod, df_met)
-
             allx[site]["Tair"] = Tairs
             allx[site]["Qle"] = Qles
             allx[site]["B"] = B
@@ -109,9 +107,9 @@ def main(flux_dir, cable_dir):
     ax1.set_ylabel("Qle (W m$^{-2}$)")
     ax2.set_ylabel("B (-)")
     ax1.legend(numpoints=1, loc="best", ncol=1, frameon=False)
-    fig.savefig("/Users/mdekauwe/Desktop/Qle_bowen_Txx_minus5.pdf",
+    fig.savefig("/Users/mdekauwe/Desktop/Qle_bowen_Txx_minus5_cable.pdf",
                 bbox_inches='tight', pad_inches=0.1)
-    fig.savefig("/Users/mdekauwe/Desktop/Qle_bowen_Txx_minus5.png", dpi=150,
+    fig.savefig("/Users/mdekauwe/Desktop/Qle_bowen_Txx_minus5_cable.png", dpi=150,
                 bbox_inches='tight', pad_inches=0.1)
     plt.show()
 
