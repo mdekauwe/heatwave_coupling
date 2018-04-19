@@ -88,11 +88,11 @@ def main(flux_dir):
     ax2 = fig.add_subplot(122)
 
     for site in sites:
-        print(site)
-        print(allx[site]["Tair"])
-        print(allx[site]["Qle"])
-        print(allx[site]["B"])
-        print("\n")
+        #print(site)
+        #print(allx[site]["Tair"])
+        #print(allx[site]["Qle"])
+        #print(allx[site]["B"])
+        #print("\n")
 
         ax1.plot(allx[site]["Tair"], allx[site]["Qle"], label=site, ls="--",
                  marker="o")
@@ -101,7 +101,6 @@ def main(flux_dir):
     ax1.set_ylabel('Temperature ($^\circ$C)', position=(1.0, 0.5))
     ax1.set_ylabel("Qle (W m${-2}$)")
     ax2.set_ylabel("B (-)")
-    ax1.legend(numpoints=1, loc="best", ncol=1, frameon=False)
     fig.savefig("/Users/mdekauwe/Desktop/Qle_bowen_Txx_minus5.pdf",
                 bbox_inches='tight', pad_inches=0.1)
 
