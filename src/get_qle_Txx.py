@@ -70,7 +70,7 @@ def main(flux_dir):
             allx[site]["B"] = B
             sites.append(site)
 
-    width  = 20.0
+    width  = 18.0
     height = width / 1.618
     fig = plt.figure(figsize=(width, height))
     fig.subplots_adjust(hspace=0.1)
@@ -99,10 +99,13 @@ def main(flux_dir):
         ax2.plot(allx[site]["Tair"], allx[site]["B"], label=site, ls="--",
                  marker="o")
     ax1.set_ylabel('Temperature ($^\circ$C)', position=(1.0, 0.5))
-    ax1.set_ylabel("Qle (W m${-2}$)")
+    ax1.set_ylabel("Qle (W m$^{-2}$)")
     ax2.set_ylabel("B (-)")
     fig.savefig("/Users/mdekauwe/Desktop/Qle_bowen_Txx_minus5.pdf",
                 bbox_inches='tight', pad_inches=0.1)
+    fig.savefig("/Users/mdekauwe/Desktop/Qle_bowen_Txx_minus5.png", dpi=150,
+                bbox_inches='tight', pad_inches=0.1)
+    plt.show()
 
 def get_hottest_day(df_flx, df_met):
     df_dm = df_met.resample("D").max()
