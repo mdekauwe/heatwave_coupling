@@ -88,7 +88,8 @@ def main(flux_dir):
         print(allx[site]["Qle"])
         print("\n")
 
-        ax1.plot(allx[site]["Tair"], allx[site]["Qle"], label=site)
+        ax1.plot(allx[site]["Tair"], allx[site]["Qle"], label=site, ls="--",
+                 marker="o")
     ax1.legend(numpoints=1, loc="best")
     plt.show()
 
