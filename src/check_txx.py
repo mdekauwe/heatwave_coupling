@@ -67,7 +67,7 @@ def main(flux_dir):
 
 
 def get_hottest_day(df_flx, df_met):
-    df_dm = df_met.resample("D").mean()
+    df_dm = df_met.resample("D").max()
     df_df = df_flx.resample("D").mean()
 
     Txx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
