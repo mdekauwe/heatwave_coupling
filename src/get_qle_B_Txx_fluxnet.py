@@ -38,7 +38,7 @@ def main(flux_dir, ofname, oz_flux=True):
     if oz_flux:
         d = get_ozflux_pfts()
 
-    cols = ['site','pft','TXx','temp','Qle','B']
+    cols = ['site','pft','TXx','temp','Qle','B','TXx2','temp2','Qle2','B2']
     df = pd.DataFrame(columns=cols)
     for flux_fn, met_fn in zip(flux_files, met_files):
         (site, df_flx, df_met) = open_file(flux_fn, met_fn, oz_flux=oz_flux)
@@ -51,13 +51,22 @@ def main(flux_dir, ofname, oz_flux=True):
         df_met.Tair -= c.DEG_2_KELVIN
 
         (TXx, Tairs, Qles, B) = get_hottest_day(df_flx, df_met)
+        (TXx2, Tairs2, Qles2, B2) = get_second_hottest_day(df_flx, df_met)
+        no_TXx2 = False
+        if len(Tairs) != len(Tairs2):
+            no_TXx2 = True
 
         if oz_flux:
             pft = d[site]
 
         lst = []
         for i in range(len(Tairs)):
-            lst.append([site,d[site],TXx,Tairs[i],Qles[i],B[i]])
+            if no_TXx2:
+                lst.append([site,d[site],TXx,Tairs[i],Qles[i],B[i],
+                            np.nan,np.nan,np.nan,np.nan])
+            else:
+                lst.append([site,d[site],TXx,Tairs[i],Qles[i],B[i],
+                            TXx2,Tairs2[i],Qles2[i],B2[i]])
         dfx = pd.DataFrame(lst, columns=cols)
         dfx = dfx.reindex(index=dfx.index[::-1]) # reverse the order hot to cool
         df = df.append(dfx)
@@ -72,6 +81,35 @@ def get_hottest_day(df_flx, df_met):
     TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
     TXx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
     TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
+    
+    Tairs = df_dm[(df_dm.index >= TXx_idx_minus_four) &
+                  (df_dm.index <= TXx_idx)].Tair.values
+    Qles = df_df[(df_dm.index >= TXx_idx_minus_four) &
+                 (df_dm.index <= TXx_idx)].Qle.values
+    Qhs = df_df[(df_dm.index >= TXx_idx_minus_four) &
+                (df_dm.index <= TXx_idx)].Qh.values
+    B = Qhs / Qles
+
+    return(TXx, Tairs, Qles, B)
+
+def get_second_hottest_day(df_flx, df_met):
+    df_dm = df_met.resample("D").max()
+    df_df = df_flx.resample("D").mean()
+
+    TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
+    TXx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
+    TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
+
+    # Drop the hottest event
+    df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
+                   (df_dm.index > TXx_idx)]
+    df_df = df_df[(df_df.index < TXx_idx_minus_four) |
+                   (df_df.index > TXx_idx)]
+
+    # Then get next TXx
+    TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
+    TXx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
+    TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
 
     Tairs = df_dm[(df_dm.index >= TXx_idx_minus_four) &
                   (df_dm.index <= TXx_idx)].Tair.values
@@ -80,6 +118,25 @@ def get_hottest_day(df_flx, df_met):
     Qhs = df_df[(df_dm.index >= TXx_idx_minus_four) &
                 (df_dm.index <= TXx_idx)].Qh.values
     B = Qhs / Qles
+
+    if len(Tairs) != 5:
+        # Drop this event and try again
+        df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
+                       (df_dm.index > TXx_idx)]
+        df_df = df_df[(df_df.index < TXx_idx_minus_four) |
+                       (df_df.index > TXx_idx)]
+
+        TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
+        TXx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
+        TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
+
+        Tairs = df_dm[(df_dm.index >= TXx_idx_minus_four) &
+                      (df_dm.index <= TXx_idx)].Tair.values
+        Qles = df_df[(df_dm.index >= TXx_idx_minus_four) &
+                     (df_dm.index <= TXx_idx)].Qle.values
+        Qhs = df_df[(df_dm.index >= TXx_idx_minus_four) &
+                    (df_dm.index <= TXx_idx)].Qh.values
+        B = Qhs / Qles
 
     return(TXx, Tairs, Qles, B)
 
@@ -127,7 +184,7 @@ def open_file(flux_fn, met_fn, oz_flux=True):
     site = os.path.basename(flux_fn).split("OzFlux")[0]
 
     ds = xr.open_dataset(flux_fn)
-    print(ds)
+    #print(ds)
     df_flx = ds.squeeze(dim=["x","y"], drop=True).to_dataframe()
     df_flx = df_flx.reset_index()
     df_flx = df_flx.set_index('time')
@@ -141,7 +198,7 @@ def open_file(flux_fn, met_fn, oz_flux=True):
 
 if __name__ == "__main__":
 
-    oz_flux = False
+    oz_flux = True
     if oz_flux:
         flux_dir = "/Users/mdekauwe/research/OzFlux"
         ofname = "ozflux.csv"
