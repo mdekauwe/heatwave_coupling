@@ -31,7 +31,7 @@ def main(flux_dir, cable_dir):
              "Samford","SturtPlains","Tumbarumba","Whroo",\
              "WombatStateForest","Yanco"]
 
-    pfts = ["SAV","SHB","TRF","TRF","EBF","GRA","SAV",\
+    pfts = ["SAV","EBF","TRF","TRF","EBF","GRA","SAV",\
             "SAV","NA","EBF","EBF",\
             "SAV","GRA","NA","GRA",\
             "GRA","GRA","EBF","EBF",\

@@ -90,6 +90,25 @@ def get_hottest_day(df_flx, df_met):
                 (df_dm.index <= TXx_idx)].Qh.values
     B = Qhs / Qles
 
+    if len(Tairs) != 5:
+        # Drop this event and try again
+        df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
+                       (df_dm.index > TXx_idx)]
+        df_df = df_df[(df_df.index < TXx_idx_minus_four) |
+                       (df_df.index > TXx_idx)]
+
+        TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
+        TXx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
+        TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
+
+        Tairs = df_dm[(df_dm.index >= TXx_idx_minus_four) &
+                      (df_dm.index <= TXx_idx)].Tair.values
+        Qles = df_df[(df_dm.index >= TXx_idx_minus_four) &
+                     (df_dm.index <= TXx_idx)].Qle.values
+        Qhs = df_df[(df_dm.index >= TXx_idx_minus_four) &
+                    (df_dm.index <= TXx_idx)].Qh.values
+        B = Qhs / Qles
+
     return(TXx, Tairs, Qles, B)
 
 def get_second_hottest_day(df_flx, df_met):
@@ -149,7 +168,7 @@ def get_ozflux_pfts():
              "Samford","SturtPlains","Tumbarumba","Whroo",\
              "WombatStateForest","Yanco"]
 
-    pfts = ["SAV","SHB","TRF","TRF","EBF","GRA","SAV",\
+    pfts = ["SAV","EBF","TRF","TRF","EBF","GRA","SAV",\
             "SAV","NA","EBF","EBF",\
             "SAV","GRA","NA","GRA",\
             "GRA","GRA","EBF","EBF",\
