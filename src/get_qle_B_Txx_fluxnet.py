@@ -81,7 +81,7 @@ def get_hottest_day(df_flx, df_met):
     TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
     TXx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
     TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
-    
+
     Tairs = df_dm[(df_dm.index >= TXx_idx_minus_four) &
                   (df_dm.index <= TXx_idx)].Tair.values
     Qles = df_df[(df_dm.index >= TXx_idx_minus_four) &

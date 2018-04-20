@@ -57,7 +57,7 @@ def main(fname):
     sites = np.unique(df.site)
     for site in sites:
         df_site = df[df.site == site]
-
+        temps = df_site["temp"].values
         ax1.plot(df_site["temp"], df_site["Qle"], label=site, ls="-",
                  marker="o")
         ax2.plot(df_site["temp"], df_site["B"], label=site, ls="-",
