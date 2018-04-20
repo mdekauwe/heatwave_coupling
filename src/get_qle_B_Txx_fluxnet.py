@@ -24,8 +24,12 @@ import constants as c
 
 def main(flux_dir, ofname, oz_flux=True):
 
-    flux_files = sorted(glob.glob(os.path.join(flux_dir, "*_flux.nc")))
-    met_files = sorted(glob.glob(os.path.join(flux_dir, "*_met.nc")))
+    if oz_flux:
+        flux_files = sorted(glob.glob(os.path.join(flux_dir, "*_flux.nc")))
+        met_files = sorted(glob.glob(os.path.join(flux_dir, "*_met.nc")))
+    else:
+        flux_files = sorted(glob.glob(os.path.join(flux_dir, "*_Flux.nc")))
+        met_files = sorted(glob.glob(os.path.join(flux_dir, "*_Met.nc")))
 
     output_dir = "outputs"
     if not os.path.exists(output_dir):
@@ -37,7 +41,7 @@ def main(flux_dir, ofname, oz_flux=True):
     cols = ['site','pft','TXx','temp','Qle','B']
     df = pd.DataFrame(columns=cols)
     for flux_fn, met_fn in zip(flux_files, met_files):
-        (site, df_flx, df_met) = open_file(flux_fn, met_fn)
+        (site, df_flx, df_met) = open_file(flux_fn, met_fn, oz_flux=oz_flux)
 
         # daylight hours
         df_flx = df_flx.between_time("06:00", "20:00")
@@ -119,10 +123,11 @@ def mask_crap_days(df_flx, df_met):
 
     return df_flx, df_met
 
-def open_file(flux_fn, met_fn):
+def open_file(flux_fn, met_fn, oz_flux=True):
     site = os.path.basename(flux_fn).split("OzFlux")[0]
 
     ds = xr.open_dataset(flux_fn)
+    print(ds)
     df_flx = ds.squeeze(dim=["x","y"], drop=True).to_dataframe()
     df_flx = df_flx.reset_index()
     df_flx = df_flx.set_index('time')
@@ -136,6 +141,12 @@ def open_file(flux_fn, met_fn):
 
 if __name__ == "__main__":
 
-    flux_dir = "/Users/mdekauwe/research/OzFlux"
-    ofname = "ozflux.csv"
-    main(flux_dir, ofname, oz_flux=True)
+    oz_flux = False
+    if oz_flux:
+        flux_dir = "/Users/mdekauwe/research/OzFlux"
+        ofname = "ozflux.csv"
+    else:
+        flux_dir = "/srv/ccrc/data04/z3509830/Fluxnet_data/Data_for_Jiafu/Daily/Nc_files"
+        flux_dir = "/Users/mdekauwe/Desktop/test"
+        ofname = "fluxnet2015.csv"
+    main(flux_dir, ofname, oz_flux=oz_flux)
