@@ -66,10 +66,14 @@ def main(fname):
             x = df_site["temp"][cnt:cnt+5]
             y = df_site["Qle"][cnt:cnt+5]
             slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
+            print(site, slope, p_value)
             if slope > 0.0 and p_value <= 0.05:
-            #if slope > 0.0 :
                 ax.plot(df_site["temp"][cnt:cnt+5], df_site["Qle"][cnt:cnt+5],
-                        label=site, ls="-", marker="o")
+                        label=site, ls="-", marker="o", zorder=100)
+            elif slope > 0.0 and p_value > 0.05:
+                ax.plot(df_site["temp"][cnt:cnt+5], df_site["Qle"][cnt:cnt+5],
+                        label=site, ls="-", marker="o", color="lightgrey",
+                        zorder=1)
             cnt += 5
 
         if count == 0:
@@ -89,16 +93,15 @@ def main(fname):
                 transform=ax.transAxes, fontsize=14, verticalalignment='top',
                 bbox=props)
 
-        ax.set_ylim(0, 250)
-        ax.set_xlim(20, 50)
+        ax.set_ylim(0, 320)
+        ax.set_xlim(15, 50)
         count += 1
 
     #fig.savefig("/Users/mdekauwe/Desktop/Qle_bowen_Txx_minus5.pdf",
     #            bbox_inches='tight', pad_inches=0.1)
-    fig.savefig("/Users/mdekauwe/Desktop/all_signif.png", dpi=150,
-    #fig.savefig("/Users/mdekauwe/Desktop/positive.png", dpi=150,
+    fig.savefig("/Users/mdekauwe/Desktop/all_events.pdf",
                 bbox_inches='tight', pad_inches=0.1)
-    plt.show()
+    #plt.show()
 
 if __name__ == "__main__":
 

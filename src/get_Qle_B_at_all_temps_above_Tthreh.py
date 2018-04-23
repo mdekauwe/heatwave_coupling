@@ -67,6 +67,7 @@ def main(flux_dir, ofname, oz_flux=True):
     df.to_csv(os.path.join(output_dir, ofname), index=False)
 
 
+
 def get_all_events(df_flx, df_met):
 
     df_dm = df_met.resample("D").max()
@@ -85,6 +86,9 @@ def get_all_events(df_flx, df_met):
     rain = rain.fillna(0.0)
     rain = rain.resample("D").sum()
 
+    #
+    ## Get the TXx event
+    #
     TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
     TXx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
     TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
@@ -93,51 +97,21 @@ def get_all_events(df_flx, df_met):
      Qhs, B) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
 
     (Tairs, Qles, B,
-     df_dm, df_df) = check_for_rain(rain, TXx_idx_minus_four,
-                                    TXx_idx, df_dm, df_df, Tairs, Qles,
-                                    Qhs, B)
+     df_dm, df_df) = is_event_long_enough(df_dm, df_df, TXx_idx,
+                                           TXx_idx_minus_four, Tairs, Qles, B,
+                                           rain)
 
-    Tairs = Tairs[~np.isnan(Tairs)]
-    Qles = Qles[~np.isnan(Qles)]
-    B = B[~np.isnan(B)]
+    if len(Tairs) < 5:
+        Tairs = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+        Qles = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+        B = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
 
 
-    while len(Tairs) != 5:
+    #
+    ## Get all the events other than the TXx that are > Tthresh
+    #
 
-        # Drop this event as there was some rain or we didn't get 5 good QA days
-        df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
-                       (df_dm.index > TXx_idx)]
-        df_df = df_df[(df_df.index < TXx_idx_minus_four) |
-                       (df_df.index > TXx_idx)]
-        try:
-            TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
-            TXx_idx = df_dm.sort_values("Tair",
-                                        ascending=False)[:1].index.values[0]
-            TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
-
-            (Tairs, Qles,
-             Qhs, B) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
-
-            (Tairs, Qles, B,
-             df_dm, df_df) = check_for_rain(rain, TXx_idx_minus_four,
-                                            TXx_idx, df_dm, df_df,
-                                            Tairs, Qles, Qhs, B)
-
-        except:
-            Tairs = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-            Qles = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-            B = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-
-        Tairs = Tairs[~np.isnan(Tairs)]
-        Qles = Qles[~np.isnan(Qles)]
-        B = B[~np.isnan(B)]
-
-        if len(Tairs) < 5:
-            Tairs = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-            Qles = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-            B = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-
-    # Drop the hottest event
+    # Drop the hottest event as we've already got it
     df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
                    (df_dm.index > TXx_idx)]
     df_df = df_df[(df_df.index < TXx_idx_minus_four) |
@@ -155,10 +129,10 @@ def get_all_events(df_flx, df_met):
         (Tairsx, Qlesx,
          Qhsx, Bx) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
 
-        (Tairsx, Qlesx, Bx,
-         df_dm, df_df) = check_for_rain(rain, TXx_idx_minus_four,
-                                        TXx_idx, df_dm, df_df, Tairsx, Qlesx,
-                                        Qhsx, Bx)
+        (Tairsx, Qlesx,
+         Bx, df_dm, df_df) = is_event_long_enough(df_dm, df_df, TXx_idx,
+                                                  TXx_idx_minus_four,
+                                                  Tairsx, Qlesx, Bx, rain)
 
         Tairsx = Tairsx[~np.isnan(Tairsx)]
         Qlesx = Qlesx[~np.isnan(Qlesx)]
@@ -169,70 +143,14 @@ def get_all_events(df_flx, df_met):
             Qles = np.append(Qles, Qlesx)
             B = np.append(B, Bx)
 
-            # Drop the hottest event
-            df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
-                           (df_dm.index > TXx_idx)]
-            df_df = df_df[(df_df.index < TXx_idx_minus_four) |
-                           (df_df.index > TXx_idx)]
-            # Then get next TXx
-            TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
-
-        else:
-            while len(Tairsx) != 5:
-
-                # Drop this event
-                df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
-                               (df_dm.index > TXx_idx)]
-                df_df = df_df[(df_df.index < TXx_idx_minus_four) |
-                               (df_df.index > TXx_idx)]
-
-                try:
-                    TXx = df_dm.sort_values("Tair",
-                                            ascending=False)[:1].Tair.values[0]
-                    TXx_idx = df_dm.sort_values("Tair",
-                                            ascending=False)[:1].index.values[0]
-                    TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
-
-                    (Tairsx, Qlesx,
-                     Qhsx, Bx) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
-
-                    (Tairsx, Qlesx, Bx,
-                     df_dm, df_df) = check_for_rain(rain, TXx_idx_minus_four,
-                                                    TXx_idx, df_dm, df_df,
-                                                    Tairsx, Qlesx,
-                                                     Qhsx, Bx)
-
-                    Tairsx = Tairsx[~np.isnan(Tairsx)]
-                    Qlesx = Qlex[~np.isnan(Qlesx)]
-                    Bx = Bx[~np.isnan(Bx)]
-
-                    if len(Tairsx) < 5:
-                        Tairsx = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-                        Qlesx = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-                        Bx = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-
-                    Tairsx = Tairsx[~np.isnan(Tairs)]
-                    Qlesx = Qlesx[~np.isnan(Qles)]
-                    Bx = Bx[~np.isnan(B)]
-
-                except:
-                    Tairsx = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-                    Qlesx = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-                    Bx = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-
-                # Drop the hottest event
-                df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
-                               (df_dm.index > TXx_idx)]
-                df_df = df_df[(df_df.index < TXx_idx_minus_four) |
-                               (df_df.index > TXx_idx)]
-                # Then get next TXx
-                TXx = df_dm.sort_values("Tair",
-                                        ascending=False)[:1].Tair.values[0]
-
-            Tairs = np.append(Tairs, Tairsx)
-            Qles = np.append(Qles, Qlesx)
-            B = np.append(B, Bx)
-
+        # Drop this event
+        df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
+                       (df_dm.index > TXx_idx)]
+        df_df = df_df[(df_df.index < TXx_idx_minus_four) |
+                       (df_df.index > TXx_idx)]
+        # Then get next TXx
+        TXx = df_dm.sort_values("Tair",
+                                ascending=False)[:1].Tair.values[0]
 
     Tairs = Tairs[~np.isnan(Tairs)]
     Qles = Qles[~np.isnan(Qles)]
@@ -257,6 +175,40 @@ def get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four):
 
     return (Tairs, Qles, Qhs, B)
 
+def is_event_long_enough(df_dm, df_df, TXx_idx, TXx_idx_minus_four,
+                         Tairs, Qles, B, rain):
+
+    while len(Tairs) != 5:
+
+        # Drop this event as it wasn't long enough
+        df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
+                       (df_dm.index > TXx_idx)]
+        df_df = df_df[(df_df.index < TXx_idx_minus_four) |
+                       (df_df.index > TXx_idx)]
+
+        TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
+        TXx_idx = df_dm.sort_values("Tair",
+                                    ascending=False)[:1].index.values[0]
+        TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
+
+        (Tairs, Qles,
+         Qhs, B) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
+
+        (Tairs, Qles, B,
+         df_dm, df_df) = check_for_rain(rain, TXx_idx_minus_four,
+                                        TXx_idx, df_dm, df_df,
+                                        Tairs, Qles, Qhs, B)
+
+        if len(df_dm) <= 5:
+            Tairs = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+            Qles = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+            B = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+            break
+
+    return (Tairs, Qles, B, df_dm, df_df)
+
+
+
 def check_for_rain(rain, TXx_idx_minus_four, TXx_idx, df_dm, df_df,
                    Tairs, Qles, Qhs, B):
 
@@ -264,8 +216,7 @@ def check_for_rain(rain, TXx_idx_minus_four, TXx_idx, df_dm, df_df,
     total_rain = np.sum(rain[(rain.index >= TXx_idx_minus_four) &
                              (rain.index <= TXx_idx)].values)
 
-
-    while total_rain > threshold:
+    while total_rain > threshold or len(Tairs) != 5:
 
         # Drop this event as there was some rain or we didn't get 5 good QA days
         df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
@@ -273,25 +224,26 @@ def check_for_rain(rain, TXx_idx_minus_four, TXx_idx, df_dm, df_df,
         df_df = df_df[(df_df.index < TXx_idx_minus_four) |
                        (df_df.index > TXx_idx)]
 
-        try:
-            TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
-            TXx_idx = df_dm.sort_values("Tair",
-                                        ascending=False)[:1].index.values[0]
-            TXx_idx_minus_four = TXx_idx - pd.Timedelta(4, unit='d')
+        TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
+        TXx_idx = df_dm.sort_values("Tair",
+                                    ascending=False)[:1].index.values[0]
+        TXx_idx_minus_four = TXx_idx - pd.Timedelta(4, unit='d')
 
-            (Tairs, Qles,
-             Qhs, B) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
-
-
-        except:
-            Tairs = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-            Qles = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
-            B = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+        (Tairs, Qles,
+         Qhs, B) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
 
         total_rain = np.sum(rain[(rain.index >= TXx_idx_minus_four) &
                                  (rain.index <= TXx_idx)].values)
 
+        if len(df_dm) <= 5:
+            Tairs = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+            Qles = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+            B = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+            break
+
     return (Tairs, Qles, B, df_dm, df_df)
+
+
 
 def get_ozflux_pfts():
 
