@@ -38,7 +38,7 @@ def main(flux_dir, ofname, oz_flux=True):
     if oz_flux:
         d = get_ozflux_pfts()
 
-    cols = ['site','pft','TXx','temp','Qle','B','TXx2','temp2','Qle2','B2']
+    cols = ['site','pft','TXx','temp','Qle','B']
     df = pd.DataFrame(columns=cols)
     for flux_fn, met_fn in zip(flux_files, met_files):
         (site, df_flx, df_met) = open_file(flux_fn, met_fn, oz_flux=oz_flux)
@@ -51,22 +51,13 @@ def main(flux_dir, ofname, oz_flux=True):
         df_met.Tair -= c.DEG_2_KELVIN
 
         (TXx, Tairs, Qles, B) = get_hottest_day(df_flx, df_met)
-        (TXx2, Tairs2, Qles2, B2) = get_second_hottest_day(df_flx, df_met)
-        no_TXx2 = False
-        if len(Tairs) != len(Tairs2):
-            no_TXx2 = True
 
         if oz_flux:
             pft = d[site]
 
         lst = []
         for i in range(len(Tairs)):
-            if no_TXx2:
-                lst.append([site,d[site],TXx,Tairs[i],Qles[i],B[i],
-                            np.nan,np.nan,np.nan,np.nan])
-            else:
-                lst.append([site,d[site],TXx,Tairs[i],Qles[i],B[i],
-                            TXx2,Tairs2[i],Qles2[i],B2[i]])
+            lst.append([site,d[site],TXx,Tairs[i],Qles[i],B[i]])
         dfx = pd.DataFrame(lst, columns=cols)
         dfx = dfx.reindex(index=dfx.index[::-1]) # reverse the order hot to cool
         df = df.append(dfx)
@@ -76,11 +67,75 @@ def main(flux_dir, ofname, oz_flux=True):
 
 def get_hottest_day(df_flx, df_met):
     df_dm = df_met.resample("D").max()
+    df_ds = df_met.resample("D").sum()
     df_df = df_flx.resample("D").mean()
+
+    # We need to figure out if it rained during our hot extreme as this
+    # would change the Qle in the way we're searching for!
+    diff = df_met.index.minute[1] - df_met.index.minute[0]
+    if diff == 0:
+        # hour gap i.e. Tumba
+        rain = df_met.Rainf * 3600.0
+    else:
+        # 30 min gap
+        rain = df_met.Rainf * 1800.0
+    rain = rain.fillna(0.0)
+    rain = rain.resample("D").sum()
 
     TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
     TXx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
     TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
+
+    (Tairs, Qles,
+     Qhs, B) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
+
+    (Tairs, Qles, B,
+     df_dm, df_df) = check_for_rain(rain, TXx_idx_minus_four,
+                                    TXx_idx, df_dm, df_df,
+                                    Tairs, Qles, Qhs, B)
+
+    Tairs = Tairs[~np.isnan(Tairs)]
+    Qles = Qles[~np.isnan(Qles)]
+    B = B[~np.isnan(B)]
+
+    while len(Tairs) != 5:
+
+        # Drop this event as there was some rain or we didn't get 5 good QA days
+        df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
+                       (df_dm.index > TXx_idx)]
+        df_df = df_df[(df_df.index < TXx_idx_minus_four) |
+                       (df_df.index > TXx_idx)]
+        try:
+            TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
+            TXx_idx = df_dm.sort_values("Tair",
+                                        ascending=False)[:1].index.values[0]
+            TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
+
+            (Tairs, Qles,
+             Qhs, B) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
+
+            (Tairs, Qles, B,
+             df_dm, df_df) = check_for_rain(rain, TXx_idx_minus_four,
+                                            TXx_idx, df_dm, df_df,
+                                            Tairs, Qles, Qhs, B)
+        except:
+            Tairs = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+            Qles = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+            B = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+
+        Tairs = Tairs[~np.isnan(Tairs)]
+        Qles = Qles[~np.isnan(Qles)]
+        B = B[~np.isnan(B)]
+
+        if len(Tairs) < 5:
+            Tairs = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+            Qles = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+            B = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+
+
+    return(TXx, Tairs, Qles, B)
+
+def get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four):
 
     Tairs = df_dm[(df_dm.index >= TXx_idx_minus_four) &
                   (df_dm.index <= TXx_idx)].Tair.values
@@ -90,74 +145,44 @@ def get_hottest_day(df_flx, df_met):
                 (df_dm.index <= TXx_idx)].Qh.values
     B = Qhs / Qles
 
-    if len(Tairs) != 5:
-        # Drop this event and try again
+    return (Tairs, Qles, Qhs, B)
+
+def check_for_rain(rain, TXx_idx_minus_four, TXx_idx, df_dm, df_df,
+                   Tairs, Qles, Qhs, B):
+
+    threshold = 0.2 # mm d-1; arbitary, we can refine.
+    total_rain = np.sum(rain[(rain.index >= TXx_idx_minus_four) &
+                             (rain.index <= TXx_idx)].values)
+
+
+    while total_rain > threshold:
+
+        # Drop this event as there was some rain or we didn't get 5 good QA days
         df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
                        (df_dm.index > TXx_idx)]
         df_df = df_df[(df_df.index < TXx_idx_minus_four) |
                        (df_df.index > TXx_idx)]
 
-        TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
-        TXx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
-        TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
+        try:
+            TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
+            TXx_idx = df_dm.sort_values("Tair",
+                                        ascending=False)[:1].index.values[0]
+            TXx_idx_minus_four = TXx_idx - pd.Timedelta(4, unit='d')
 
-        Tairs = df_dm[(df_dm.index >= TXx_idx_minus_four) &
-                      (df_dm.index <= TXx_idx)].Tair.values
-        Qles = df_df[(df_dm.index >= TXx_idx_minus_four) &
-                     (df_dm.index <= TXx_idx)].Qle.values
-        Qhs = df_df[(df_dm.index >= TXx_idx_minus_four) &
-                    (df_dm.index <= TXx_idx)].Qh.values
-        B = Qhs / Qles
+            (Tairs, Qles,
+             Qhs, B) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
 
-    return(TXx, Tairs, Qles, B)
 
-def get_second_hottest_day(df_flx, df_met):
-    df_dm = df_met.resample("D").max()
-    df_df = df_flx.resample("D").mean()
+        except:
+            Tairs = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+            Qles = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
+            B = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
 
-    TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
-    TXx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
-    TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
+        total_rain = np.sum(rain[(rain.index >= TXx_idx_minus_four) &
+                                 (rain.index <= TXx_idx)].values)
 
-    # Drop the hottest event
-    df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
-                   (df_dm.index > TXx_idx)]
-    df_df = df_df[(df_df.index < TXx_idx_minus_four) |
-                   (df_df.index > TXx_idx)]
+    return (Tairs, Qles, B, df_dm, df_df)
 
-    # Then get next TXx
-    TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
-    TXx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
-    TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
-
-    Tairs = df_dm[(df_dm.index >= TXx_idx_minus_four) &
-                  (df_dm.index <= TXx_idx)].Tair.values
-    Qles = df_df[(df_dm.index >= TXx_idx_minus_four) &
-                 (df_dm.index <= TXx_idx)].Qle.values
-    Qhs = df_df[(df_dm.index >= TXx_idx_minus_four) &
-                (df_dm.index <= TXx_idx)].Qh.values
-    B = Qhs / Qles
-
-    if len(Tairs) != 5:
-        # Drop this event and try again
-        df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
-                       (df_dm.index > TXx_idx)]
-        df_df = df_df[(df_df.index < TXx_idx_minus_four) |
-                       (df_df.index > TXx_idx)]
-
-        TXx = df_dm.sort_values("Tair", ascending=False)[:1].Tair.values[0]
-        TXx_idx = df_dm.sort_values("Tair", ascending=False)[:1].index.values[0]
-        TXx_idx_minus_four= TXx_idx - pd.Timedelta(4, unit='d')
-
-        Tairs = df_dm[(df_dm.index >= TXx_idx_minus_four) &
-                      (df_dm.index <= TXx_idx)].Tair.values
-        Qles = df_df[(df_dm.index >= TXx_idx_minus_four) &
-                     (df_dm.index <= TXx_idx)].Qle.values
-        Qhs = df_df[(df_dm.index >= TXx_idx_minus_four) &
-                    (df_dm.index <= TXx_idx)].Qh.values
-        B = Qhs / Qles
-
-    return(TXx, Tairs, Qles, B)
 
 def get_ozflux_pfts():
 
@@ -179,14 +204,18 @@ def get_ozflux_pfts():
     return d
 
 def mask_crap_days(df_flx, df_met):
-    # Mask crap stuff
+    """ Mask bad QA, i.e. drop any data where Qle, Qa, Tair and Rain are flagged
+    as being of poor quality"""
+
     df_flx.where(df_flx.Qle_qc == 1, inplace=True)
     df_flx.where(df_flx.Qh_qc == 1, inplace=True)
     df_flx.where(df_met.Tair_qc == 1, inplace=True)
+    #df_flx.where(df_met.Rainf_qc == 1, inplace=True)
 
     df_met.where(df_flx.Qle_qc == 1, inplace=True)
     df_met.where(df_flx.Qh_qc == 1, inplace=True)
     df_met.where(df_met.Tair_qc == 1, inplace=True)
+    #df_met.where(df_met.Rainf_qc == 1, inplace=True)
 
     # Mask dew
     df_met.where(df_flx.Qle > 0., inplace=True)
