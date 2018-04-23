@@ -91,7 +91,8 @@ def get_hottest_day(df_flx, df_met):
 
     (Tairs, Qles, B,
      df_dm, df_df) = is_event_long_enough(df_dm, df_df, TXx_idx,
-                                           TXx_idx_minus_four, Tairs, Qles, B)
+                                           TXx_idx_minus_four, Tairs, Qles, B,
+                                           rain)
 
     if len(Tairs) < 5:
         Tairs = np.array([np.nan,np.nan,np.nan,np.nan,np.nan])
@@ -114,7 +115,7 @@ def get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four):
     return (Tairs, Qles, Qhs, B)
 
 def is_event_long_enough(df_dm, df_df, TXx_idx, TXx_idx_minus_four,
-                         Tairs, Qles, B):
+                         Tairs, Qles, B, rain):
 
     while len(Tairs) != 5:
 
