@@ -37,7 +37,7 @@ def main(flux_dir, ofname, oz_flux=True):
     if oz_flux:
         d = get_ozflux_pfts()
 
-    cols = ['site','pft','temp','Qle','B']
+    cols = ['site','pft','temp','Qle','B','GPP']
     df = pd.DataFrame(columns=cols)
     for flux_fn, met_fn in zip(flux_files, met_files):
         (site, df_flx, df_met) = open_file(flux_fn, met_fn, oz_flux=oz_flux)
@@ -52,14 +52,14 @@ def main(flux_dir, ofname, oz_flux=True):
             (df_flx, df_met) = mask_crap_days(df_flx, df_met)
             df_met.Tair -= c.DEG_2_KELVIN
 
-            (Tairs, Qles, B) = get_all_events(df_flx, df_met)
+            (Tairs, Qles, B, GPPs) = get_all_events(df_flx, df_met)
 
             if oz_flux:
                 pft = d[site]
 
             lst = []
             for i in range(len(Tairs)):
-                lst.append([site,d[site],Tairs[i],Qles[i],B[i]])
+                lst.append([site,d[site],Tairs[i],Qles[i],B[i],GPPs[i]])
             dfx = pd.DataFrame(lst, columns=cols)
             dfx = dfx.reindex(index=dfx.index[::-1]) # reverse the order hot to cool
             df = df.append(dfx)
@@ -70,9 +70,22 @@ def main(flux_dir, ofname, oz_flux=True):
 
 def get_all_events(df_flx, df_met):
 
+    # We need to figure out if it rained during our hot extreme as this
+    # would change the Qle in the way we're searching for!
+    diff = df_flx.index.minute[1] - df_flx.index.minute[0]
+    # Change GPP units
+    if diff == 0:
+        # hour gap i.e. Tumba
+        df_flx["GPP"] *= 12. * 0.000001 * 3600.0
+    else:
+        # 30 min gap
+        df_flx["GPP"] *= 12. * 0.000001 * 1800.0
+
+
     df_dm = df_met.resample("D").max()
     df_ds = df_met.resample("D").sum()
     df_df = df_flx.resample("D").mean()
+    df_dfs = df_flx.resample("D").sum()
 
     # We need to figure out if it rained during our hot extreme as this
     # would change the Qle in the way we're searching for!
@@ -94,12 +107,12 @@ def get_all_events(df_flx, df_met):
     TXx_idx_minus_four = TXx_idx - pd.Timedelta(3, unit='d')
 
     (Tairs, Qles,
-     Qhs, B) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
+     Qhs, B, GPP) = get_values(df_dm, df_df, df_dfs, TXx_idx, TXx_idx_minus_four)
 
-    (Tairs, Qles, B,
-     df_dm, df_df) = is_event_long_enough(df_dm, df_df, TXx_idx,
+    (Tairs, Qles, B, GPP,
+     df_dm, df_df) = is_event_long_enough(df_dm, df_df, df_dfs, TXx_idx,
                                            TXx_idx_minus_four, Tairs, Qles, B,
-                                           rain)
+                                           GPP, rain)
 
     if len(Tairs) < 4:
         Tairs = np.array([np.nan,np.nan,np.nan,np.nan])
@@ -127,21 +140,23 @@ def get_all_events(df_flx, df_met):
         TXx_idx_minus_four= TXx_idx - pd.Timedelta(3, unit='d')
 
         (Tairsx, Qlesx,
-         Qhsx, Bx) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
+         Qhsx, Bx, GPPx) = get_values(df_dm, df_df, df_dfs, TXx_idx, TXx_idx_minus_four)
 
         (Tairsx, Qlesx,
-         Bx, df_dm, df_df) = is_event_long_enough(df_dm, df_df, TXx_idx,
+         Bx, GPPx, df_dm, df_df) = is_event_long_enough(df_dm, df_df, df_dfs, TXx_idx,
                                                   TXx_idx_minus_four,
-                                                  Tairsx, Qlesx, Bx, rain)
+                                                  Tairsx, Qlesx, Bx, GPPx, rain)
 
         Tairsx = Tairsx[~np.isnan(Tairsx)]
         Qlesx = Qlesx[~np.isnan(Qlesx)]
         Bx = Bx[~np.isnan(Bx)]
+        GPPx = GPPx[~np.isnan(GPPx)]
 
         if len(Tairsx) == 4:
             Tairs = np.append(Tairs, Tairsx)
             Qles = np.append(Qles, Qlesx)
             B = np.append(B, Bx)
+            GPP = np.append(GPP, GPPx)
 
         # Drop this event
         df_dm = df_dm[(df_dm.index < TXx_idx_minus_four) |
@@ -155,15 +170,17 @@ def get_all_events(df_flx, df_met):
     Tairs = Tairs[~np.isnan(Tairs)]
     Qles = Qles[~np.isnan(Qles)]
     B = B[~np.isnan(B)]
+    GPP = GPP[~np.isnan(GPP)]
 
     if len(Tairs) < 4:
         Tairs = np.array([np.nan,np.nan,np.nan,np.nan])
         Qles = np.array([np.nan,np.nan,np.nan,np.nan])
         B = np.array([np.nan,np.nan,np.nan,np.nan])
+        GPP = np.array([np.nan,np.nan,np.nan,np.nan])
 
-    return(Tairs, Qles, B)
+    return(Tairs, Qles, B, GPP)
 
-def get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four):
+def get_values(df_dm, df_df, df_dfs, TXx_idx, TXx_idx_minus_four):
 
     Tairs = df_dm[(df_dm.index >= TXx_idx_minus_four) &
                   (df_dm.index <= TXx_idx)].Tair.values
@@ -172,11 +189,13 @@ def get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four):
     Qhs = df_df[(df_dm.index >= TXx_idx_minus_four) &
                 (df_dm.index <= TXx_idx)].Qh.values
     B = Qhs / Qles
+    GPPs = df_dfs[(df_dfs.index >= TXx_idx_minus_four) &
+                  (df_dfs.index <= TXx_idx)].GPP.values
 
-    return (Tairs, Qles, Qhs, B)
+    return (Tairs, Qles, Qhs, B, GPPs)
 
-def is_event_long_enough(df_dm, df_df, TXx_idx, TXx_idx_minus_four,
-                         Tairs, Qles, B, rain):
+def is_event_long_enough(df_dm, df_df, df_dfs, TXx_idx, TXx_idx_minus_four,
+                         Tairs, Qles, B, GPPs, rain):
 
     while len(Tairs) != 4:
 
@@ -192,25 +211,26 @@ def is_event_long_enough(df_dm, df_df, TXx_idx, TXx_idx_minus_four,
         TXx_idx_minus_four= TXx_idx - pd.Timedelta(3, unit='d')
 
         (Tairs, Qles,
-         Qhs, B) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
+         Qhs, B, GPPs) = get_values(df_dm, df_df, df_dfs, TXx_idx, TXx_idx_minus_four)
 
-        (Tairs, Qles, B,
+        (Tairs, Qles, B, GPPs,
          df_dm, df_df) = check_for_rain(rain, TXx_idx_minus_four,
-                                        TXx_idx, df_dm, df_df,
-                                        Tairs, Qles, Qhs, B)
+                                        TXx_idx, df_dm, df_df, df_dfs,
+                                        Tairs, Qles, Qhs, B, GPPs)
 
         if len(df_dm) <= 4:
             Tairs = np.array([np.nan,np.nan,np.nan,np.nan])
             Qles = np.array([np.nan,np.nan,np.nan,np.nan])
             B = np.array([np.nan,np.nan,np.nan,np.nan])
+            GPP = np.array([np.nan,np.nan,np.nan,np.nan])
             break
 
-    return (Tairs, Qles, B, df_dm, df_df)
+    return (Tairs, Qles, B, GPPs, df_dm, df_df)
 
 
 
-def check_for_rain(rain, TXx_idx_minus_four, TXx_idx, df_dm, df_df,
-                   Tairs, Qles, Qhs, B):
+def check_for_rain(rain, TXx_idx_minus_four, TXx_idx, df_dm, df_df, df_dfs,
+                   Tairs, Qles, Qhs, B, GPPs):
 
     threshold = 0.2 # mm d-1; arbitary, we can refine.
     total_rain = np.sum(rain[(rain.index >= TXx_idx_minus_four) &
@@ -230,7 +250,7 @@ def check_for_rain(rain, TXx_idx_minus_four, TXx_idx, df_dm, df_df,
         TXx_idx_minus_four = TXx_idx - pd.Timedelta(3, unit='d')
 
         (Tairs, Qles,
-         Qhs, B) = get_values(df_dm, df_df, TXx_idx, TXx_idx_minus_four)
+         Qhs, B, GPPs) = get_values(df_dm, df_df, df_dfs, TXx_idx, TXx_idx_minus_four)
 
         total_rain = np.sum(rain[(rain.index >= TXx_idx_minus_four) &
                                  (rain.index <= TXx_idx)].values)
@@ -239,9 +259,10 @@ def check_for_rain(rain, TXx_idx_minus_four, TXx_idx, df_dm, df_df,
             Tairs = np.array([np.nan,np.nan,np.nan,np.nan])
             Qles = np.array([np.nan,np.nan,np.nan,np.nan])
             B = np.array([np.nan,np.nan,np.nan,np.nan])
+            GPPs = np.array([np.nan,np.nan,np.nan,np.nan])
             break
 
-    return (Tairs, Qles, B, df_dm, df_df)
+    return (Tairs, Qles, B, GPPs, df_dm, df_df)
 
 
 
