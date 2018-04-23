@@ -57,24 +57,24 @@ def main(fname):
         ax = fig.add_subplot(2,4,1+count)
 
         df_site = df[df.site == site]
-        events = int(len(df_site)/5)
+        events = int(len(df_site)/4)
 
         cnt = 0
         for e in range(0, events):
 
             from scipy import stats
-            x = df_site["temp"][cnt:cnt+5]
-            y = df_site["Qle"][cnt:cnt+5]
+            x = df_site["temp"][cnt:cnt+4]
+            y = df_site["Qle"][cnt:cnt+4]
             slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
             print(site, slope, p_value)
             if slope > 0.0 and p_value <= 0.05:
-                ax.plot(df_site["temp"][cnt:cnt+5], df_site["Qle"][cnt:cnt+5],
+                ax.plot(df_site["temp"][cnt:cnt+4], df_site["Qle"][cnt:cnt+4],
                         label=site, ls="-", marker="o", zorder=100)
             elif slope > 0.0 and p_value > 0.05:
-                ax.plot(df_site["temp"][cnt:cnt+5], df_site["Qle"][cnt:cnt+5],
+                ax.plot(df_site["temp"][cnt:cnt+4], df_site["Qle"][cnt:cnt+4],
                         label=site, ls="-", marker="o", color="lightgrey",
                         zorder=1)
-            cnt += 5
+            cnt += 4
 
         if count == 0:
             ax.set_ylabel("Qle (W m$^{-2}$)", position=(0.5, 0.0))
