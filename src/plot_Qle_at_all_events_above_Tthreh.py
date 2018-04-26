@@ -19,7 +19,7 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 import pandas as pd
-
+import re
 import constants as c
 
 def main(fname):
@@ -38,7 +38,7 @@ def main(fname):
     width = 14
     height = 5
     fig = plt.figure(figsize=(width, height))
-    fig.subplots_adjust(hspace=0.1)
+    fig.subplots_adjust(hspace=0.2)
     fig.subplots_adjust(wspace=0.1)
     plt.rcParams['text.usetex'] = False
     plt.rcParams['font.family'] = "sans-serif"
@@ -53,6 +53,7 @@ def main(fname):
     count = 0
     sites = np.unique(df.site)
     for site in sites:
+        site_name = re.sub(r"(\w)([A-Z])", r"\1 \2", site)
 
         ax = fig.add_subplot(2,4,1+count)
 
@@ -66,7 +67,7 @@ def main(fname):
             x = df_site["temp"][cnt:cnt+4]
             y = df_site["Qle"][cnt:cnt+4]
             slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
-            
+
             if slope > 0.0 and p_value <= 0.05:
                 ax.plot(df_site["temp"][cnt:cnt+4], df_site["Qle"][cnt:cnt+4],
                         label=site, ls="-", marker="o", zorder=100)
@@ -89,7 +90,7 @@ def main(fname):
 
         props = dict(boxstyle='round', facecolor='white', alpha=1.0,
                      ec="white")
-        ax.text(0.04, 0.95, site,
+        ax.text(0.04, 0.95, site_name,
                 transform=ax.transAxes, fontsize=14, verticalalignment='top',
                 bbox=props)
 

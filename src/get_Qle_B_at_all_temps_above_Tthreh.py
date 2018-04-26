@@ -55,7 +55,7 @@ def main(flux_dir, ofname, oz_flux=True):
                 df_flx = df_flx.between_time("06:00", "20:00")
                 df_met = df_met.between_time("06:00", "20:00")
 
-                (df_flx, df_met) = mask_crap_days(df_flx, df_met)
+                (df_flx, df_met) = mask_crap_days(df_flx, df_met, oz_flux=oz_flux)
                 df_met.Tair -= c.DEG_2_KELVIN
 
                 (Tairs, Qles, B, GPPs) = get_all_events(df_flx, df_met)
@@ -73,7 +73,7 @@ def main(flux_dir, ofname, oz_flux=True):
                 df_flx = df_flx.between_time("06:00", "20:00")
                 df_met = df_met.between_time("06:00", "20:00")
 
-                (df_flx, df_met) = mask_crap_days(df_flx, df_met)
+                (df_flx, df_met) = mask_crap_days(df_flx, df_met, oz_flux=oz_flux)
                 df_met.Tair -= c.DEG_2_KELVIN
 
                 (Tairs, Qles, B, GPPs) = get_all_events(df_flx, df_met)
@@ -306,18 +306,29 @@ def get_ozflux_pfts():
 
     return d
 
-def mask_crap_days(df_flx, df_met):
+def mask_crap_days(df_flx, df_met, oz_flux=True):
     """ Mask bad QA, i.e. drop any data where Qle, Qa, Tair and Rain are flagged
     as being of poor quality"""
 
-    thresh = 0.1 / 1800. # 0.1 mm/hlfhr -> mm/s
-    df_flx.where(df_flx.Qle_qc == 1, inplace=True)
-    df_flx.where(df_flx.Qh_qc == 1, inplace=True)
-    df_flx.where(df_met.Tair_qc == 1, inplace=True)
+    if oz_flux:
+        df_met.where(df_flx.Qle_qc == 1, inplace=True)
+        df_met.where(df_flx.Qh_qc == 1, inplace=True)
 
-    df_met.where(df_flx.Qle_qc == 1, inplace=True)
-    df_met.where(df_flx.Qh_qc == 1, inplace=True)
-    df_met.where(df_met.Tair_qc == 1, inplace=True)
+        df_flx.where(df_flx.Qle_qc == 1, inplace=True)
+        df_flx.where(df_flx.Qh_qc == 1, inplace=True)
+        df_flx.where(df_met.Tair_qc == 1, inplace=True)
+
+        df_met.where(df_met.Tair_qc == 1, inplace=True)
+
+    else:
+        df_met.where(np.logical_or(df_flx.Qle_qc == 0, df_flx.Qle_qc == 1), inplace=True)
+        df_met.where(np.logical_or(df_flx.Qh_qc == 0, df_flx.Qh_qc == 1), inplace=True)
+        
+        df_flx.where(np.logical_or(df_flx.Qle_qc == 0, df_flx.Qle_qc == 1), inplace=True)
+        df_flx.where(np.logical_or(df_flx.Qh_qc == 0, df_flx.Qh_qc == 1), inplace=True)
+        df_flx.where(np.logical_or(df_met.Tair_qc == 0, df_met.Tair_qc == 1), inplace=True)
+
+        df_met.where(np.logical_or(df_met.Tair_qc == 0, df_met.Tair_qc == 1), inplace=True)
 
 
     # Mask dew
