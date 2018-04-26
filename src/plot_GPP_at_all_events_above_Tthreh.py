@@ -97,9 +97,8 @@ def main(fname):
         ax.set_xlim(15, 50)
         count += 1
 
-    #fig.savefig("/Users/mdekauwe/Desktop/Qle_bowen_Txx_minus5.pdf",
-    #            bbox_inches='tight', pad_inches=0.1)
-    fig.savefig("/Users/mdekauwe/Desktop/all_events_GPP.pdf",
+    ofdir = "/Users/mdekauwe/Dropbox/fluxnet_heatwaves_paper/figures/figs"
+    fig.savefig(os.path.join(ofdir, "all_events_GPP.pdf"),
                 bbox_inches='tight', pad_inches=0.1)
     #plt.show()
 

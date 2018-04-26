@@ -29,7 +29,7 @@ def main(fname):
         os.makedirs(plot_dir)
 
     df = pd.read_csv(fname)
-    df = df[df.pft == "EBF"]
+    df = df[~np.isnan(df.temp)]
 
     #width  = 12.0
     #height = width / 1.618
@@ -53,8 +53,9 @@ def main(fname):
     count = 0
     sites = np.unique(df.site)
     for site in sites:
+        site_name = site[:6]
 
-        ax = fig.add_subplot(2,4,1+count)
+        ax = fig.add_subplot(3,4,1+count)
 
         df_site = df[df.site == site]
         events = int(len(df_site)/4)
@@ -66,7 +67,7 @@ def main(fname):
             x = df_site["temp"][cnt:cnt+4]
             y = df_site["Qle"][cnt:cnt+4]
             slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
-            
+
             if slope > 0.0 and p_value <= 0.05:
                 ax.plot(df_site["temp"][cnt:cnt+4], df_site["Qle"][cnt:cnt+4],
                         label=site, ls="-", marker="o", zorder=100)
@@ -74,6 +75,7 @@ def main(fname):
                 ax.plot(df_site["temp"][cnt:cnt+4], df_site["Qle"][cnt:cnt+4],
                         label=site, ls="-", marker="o", color="lightgrey",
                         zorder=1)
+
             cnt += 4
 
         if count == 0:
@@ -89,7 +91,7 @@ def main(fname):
 
         props = dict(boxstyle='round', facecolor='white', alpha=1.0,
                      ec="white")
-        ax.text(0.04, 0.95, site,
+        ax.text(0.04, 0.95, site_name,
                 transform=ax.transAxes, fontsize=14, verticalalignment='top',
                 bbox=props)
 
@@ -97,14 +99,14 @@ def main(fname):
         ax.set_xlim(15, 50)
         count += 1
 
-    ofdir = "/Users/mdekauwe/Dropbox/fluxnet_heatwaves_paper/figures/figs"
-    fig.savefig(os.path.join(ofdir, "all_events.pdf"),
-                bbox_inches='tight', pad_inches=0.1)
-    #plt.show()
+    #ofdir = "/Users/mdekauwe/Dropbox/fluxnet_heatwaves_paper/figures/figs"
+    #fig.savefig(os.path.join(ofdir, "all_events_fluxnet.pdf"),
+    #            bbox_inches='tight', pad_inches=0.1)
+    plt.show()
 
 if __name__ == "__main__":
 
     data_dir = "outputs/"
-    fname = "ozflux_all_events.csv"
+    fname = "fluxnet2015_all_events.csv"
     fname = os.path.join(data_dir, fname)
     main(fname)

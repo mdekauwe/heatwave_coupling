@@ -21,14 +21,16 @@ import pandas as pd
 
 import constants as c
 
-def main(flux_dir, ofname, oz_flux=True):
+def main(flux_dir, cable_dir, ofname, oz_flux=True):
 
     if oz_flux:
         flux_files = sorted(glob.glob(os.path.join(flux_dir, "*_flux.nc")))
         met_files = sorted(glob.glob(os.path.join(flux_dir, "*_met.nc")))
+        cable_files = sorted(glob.glob(os.path.join(cable_dir, "*_out.nc")))
     else:
         flux_files = sorted(glob.glob(os.path.join(flux_dir, "*_Flux.nc")))
         met_files = sorted(glob.glob(os.path.join(flux_dir, "*_Met.nc")))
+        cable_files = sorted(glob.glob(os.path.join(cable_dir, "*_out.nc")))
 
     output_dir = "outputs"
     if not os.path.exists(output_dir):
@@ -39,51 +41,32 @@ def main(flux_dir, ofname, oz_flux=True):
 
     cols = ['site','pft','temp','Qle','B','GPP']
     df = pd.DataFrame(columns=cols)
-    for flux_fn, met_fn in zip(flux_files, met_files):
-        (site, df_flx,
-         df_met, pftx) = open_file(flux_fn, met_fn, oz_flux=oz_flux)
+    for cable_fn, flux_fn, met_fn in zip(cable_files, flux_files, met_files):
+        (site, df_mod,
+         df_flx, df_met) = open_file(cable_fn, flux_fn, met_fn, oz_flux=oz_flux)
 
-        if oz_flux:
-            pft = d[site]
-        else:
-            pft = pftx
 
-        if oz_flux:
-            if pft == "EBF" or pft == "SAV" or pft == "TRF":
-                print(site, np.unique(df_met.index.year))
-                # daylight hours
-                df_flx = df_flx.between_time("06:00", "20:00")
-                df_met = df_met.between_time("06:00", "20:00")
+        if d[site] == "EBF" or d[site] == "SAV" or d[site] == "TRF":
+            print(site, np.unique(df_met.index.year))
+            # daylight hours
+            df_flx = df_flx.between_time("06:00", "20:00")
+            df_met = df_met.between_time("06:00", "20:00")
+            df_mod = df_mod.between_time("06:00", "20:00")
 
-                (df_flx, df_met) = mask_crap_days(df_flx, df_met)
-                df_met.Tair -= c.DEG_2_KELVIN
+            (df_mod, df_flx, df_met) = mask_crap_days(df_mod, df_flx, df_met)
+            df_met.Tair -= c.DEG_2_KELVIN
 
-                (Tairs, Qles, B, GPPs) = get_all_events(df_flx, df_met)
+            (Tairs, Qles, B, GPPs) = get_all_events(df_mod, df_met)
 
-                lst = []
-                for i in range(len(Tairs)):
-                    lst.append([site,pft,Tairs[i],Qles[i],B[i],GPPs[i]])
-                dfx = pd.DataFrame(lst, columns=cols)
-                dfx = dfx.reindex(index=dfx.index[::-1]) # reverse the order hot to cool
-                df = df.append(dfx)
-        else:
-            if pft == "EBF" or pft == "ENF" or pft == "DBF":
-                print(site, np.unique(df_met.index.year))
-                # daylight hours
-                df_flx = df_flx.between_time("06:00", "20:00")
-                df_met = df_met.between_time("06:00", "20:00")
+            if oz_flux:
+                pft = d[site]
 
-                (df_flx, df_met) = mask_crap_days(df_flx, df_met)
-                df_met.Tair -= c.DEG_2_KELVIN
-
-                (Tairs, Qles, B, GPPs) = get_all_events(df_flx, df_met)
-
-                lst = []
-                for i in range(len(Tairs)):
-                    lst.append([site,pft,Tairs[i],Qles[i],B[i],GPPs[i]])
-                dfx = pd.DataFrame(lst, columns=cols)
-                dfx = dfx.reindex(index=dfx.index[::-1]) # reverse the order hot to cool
-                df = df.append(dfx)
+            lst = []
+            for i in range(len(Tairs)):
+                lst.append([site,d[site],Tairs[i],Qles[i],B[i],GPPs[i]])
+            dfx = pd.DataFrame(lst, columns=cols)
+            dfx = dfx.reindex(index=dfx.index[::-1]) # reverse the order hot to cool
+            df = df.append(dfx)
 
     df.to_csv(os.path.join(output_dir, ofname), index=False)
 
@@ -306,7 +289,7 @@ def get_ozflux_pfts():
 
     return d
 
-def mask_crap_days(df_flx, df_met):
+def mask_crap_days(df_mod, df_flx, df_met):
     """ Mask bad QA, i.e. drop any data where Qle, Qa, Tair and Rain are flagged
     as being of poor quality"""
 
@@ -315,31 +298,33 @@ def mask_crap_days(df_flx, df_met):
     df_flx.where(df_flx.Qh_qc == 1, inplace=True)
     df_flx.where(df_met.Tair_qc == 1, inplace=True)
 
+    df_mod.where(df_flx.Qle_qc == 1, inplace=True)
+    df_mod.where(df_flx.Qh_qc == 1, inplace=True)
+    df_mod.where(df_met.Tair_qc == 1, inplace=True)
+
     df_met.where(df_flx.Qle_qc == 1, inplace=True)
     df_met.where(df_flx.Qh_qc == 1, inplace=True)
     df_met.where(df_met.Tair_qc == 1, inplace=True)
 
-
     # Mask dew
     df_met.where(df_flx.Qle > 0., inplace=True)
+    df_mod.where(df_flx.Qle > 0., inplace=True)
     df_flx.where(df_flx.Qle > 0., inplace=True)
 
     df_met = df_met.reset_index()
     df_met = df_met.set_index('time')
     df_flx = df_flx.reset_index()
     df_flx = df_flx.set_index('time')
+    df_mod = df_mod.reset_index()
+    df_mod = df_mod.set_index('time')
 
-    return df_flx, df_met
+    return df_mod, df_flx, df_met
 
-def open_file(flux_fn, met_fn, oz_flux=True):
+def open_file(cable_fn, flux_fn, met_fn, oz_flux=True):
     site = os.path.basename(flux_fn).split("OzFlux")[0]
-    ds = xr.open_dataset(flux_fn)
 
-    if oz_flux == False:
-        pft = (str(ds.IGBP_veg_short.values, 'utf-8'))
-        pft = pft.replace(" ", "")
-    else:
-        pft = None
+    ds = xr.open_dataset(flux_fn)
+    #print(ds)
     df_flx = ds.squeeze(dim=["x","y"], drop=True).to_dataframe()
     df_flx = df_flx.reset_index()
     df_flx = df_flx.set_index('time')
@@ -349,16 +334,24 @@ def open_file(flux_fn, met_fn, oz_flux=True):
     df_met = df_met.reset_index()
     df_met = df_met.set_index('time')
 
-    return (site, df_flx, df_met, pft)
+    ds = xr.open_dataset(cable_fn)
+    time = pd.to_datetime(ds.time.values)
+    df_mod = ds[['Qle','Qh', 'GPP']].squeeze(drop=True).to_dataframe()
+    df_mod['time'] = time
+    df_mod = df_mod.set_index('time')
+
+    return (site, df_mod, df_flx, df_met)
 
 if __name__ == "__main__":
 
-    oz_flux = False
+    oz_flux = True
     if oz_flux:
         flux_dir = "/Users/mdekauwe/research/OzFlux"
-        ofname = "ozflux_all_events.csv"
+        ofname = "ozflux_all_events_CABLE.csv"
+        cable_dir = "/Users/mdekauwe/research/CABLE_runs/runs/ozflux/outputs"
     else:
-        #flux_dir = "/srv/ccrc/data04/z3509830/Fluxnet_data/Data_for_Jiafu/Daily/Nc_files"
-        flux_dir = "/Users/mdekauwe/Desktop/fluxnet2015_trees"
-        ofname = "fluxnet2015_all_events.csv"
-    main(flux_dir, ofname, oz_flux=oz_flux)
+        flux_dir = "/srv/ccrc/data04/z3509830/Fluxnet_data/Data_for_Jiafu/Daily/Nc_files"
+        flux_dir = "/Users/mdekauwe/Desktop/test"
+        ofname = "fluxnet2015_CABLE.csv"
+        cable_dir = "/Users/mdekauwe/research/CABLE_runs/runs/ozflux/outputs"
+    main(flux_dir, cable_dir, ofname, oz_flux=oz_flux)

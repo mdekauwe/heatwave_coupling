@@ -22,7 +22,7 @@ import pandas as pd
 
 import constants as c
 
-def main(fname):
+def main(fname, supp=False):
 
     plot_dir = "plots"
     if not os.path.exists(plot_dir):
@@ -66,14 +66,23 @@ def main(fname):
             x = df_site["temp"][cnt:cnt+4]
             y = df_site["Qle"][cnt:cnt+4]
             slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
-            
-            if slope > 0.0 and p_value <= 0.05:
-                ax.plot(df_site["temp"][cnt:cnt+4], df_site["Qle"][cnt:cnt+4],
-                        label=site, ls="-", marker="o", zorder=100)
-            elif slope > 0.0 and p_value > 0.05:
-                ax.plot(df_site["temp"][cnt:cnt+4], df_site["Qle"][cnt:cnt+4],
-                        label=site, ls="-", marker="o", color="lightgrey",
-                        zorder=1)
+
+            if supp:
+                if slope < 0.0 and p_value <= 0.05:
+                    ax.plot(df_site["temp"][cnt:cnt+4], df_site["Qle"][cnt:cnt+4],
+                            label=site, ls="-", marker="o", zorder=100)
+                elif slope < 0.0 and p_value > 0.05:
+                    ax.plot(df_site["temp"][cnt:cnt+4], df_site["Qle"][cnt:cnt+4],
+                            label=site, ls="-", marker="o", color="lightgrey",
+                            zorder=1)
+            else:
+                if slope > 0.0 and p_value <= 0.05:
+                    ax.plot(df_site["temp"][cnt:cnt+4], df_site["Qle"][cnt:cnt+4],
+                            label=site, ls="-", marker="o", zorder=100)
+                elif slope > 0.0 and p_value > 0.05:
+                    ax.plot(df_site["temp"][cnt:cnt+4], df_site["Qle"][cnt:cnt+4],
+                            label=site, ls="-", marker="o", color="lightgrey",
+                            zorder=1)
             cnt += 4
 
         if count == 0:
@@ -98,13 +107,21 @@ def main(fname):
         count += 1
 
     ofdir = "/Users/mdekauwe/Dropbox/fluxnet_heatwaves_paper/figures/figs"
-    fig.savefig(os.path.join(ofdir, "all_events.pdf"),
-                bbox_inches='tight', pad_inches=0.1)
+    if supp:
+        fig.savefig(os.path.join(ofdir, "all_events_Qle_CABLE_supp.pdf"),
+                    bbox_inches='tight', pad_inches=0.1)
+    else:
+        fig.savefig(os.path.join(ofdir, "all_events_Qle_CABLE.pdf"),
+                    bbox_inches='tight', pad_inches=0.1)
     #plt.show()
 
 if __name__ == "__main__":
 
     data_dir = "outputs/"
-    fname = "ozflux_all_events.csv"
+    fname = "ozflux_all_events_CABLE.csv"
     fname = os.path.join(data_dir, fname)
     main(fname)
+
+    fname = "ozflux_all_events_CABLE.csv"
+    fname = os.path.join(data_dir, fname)
+    main(fname, supp=True)
