@@ -31,14 +31,29 @@ def main(fname):
     df = pd.read_csv(fname)
     df = df[~np.isnan(df.temp)]
 
+    ignore_sites = ["AliceSprings", "UCI-1850burnsite", \
+                    "UCI-1964burnsitewet", "WallabyCreek",\
+                    "Whroo","Saskatchewan-WesternBoreal,forestburnedin1989",
+                    "CumberlandPlains"]
+    for site in ignore_sites:
+        df = df.drop( df[(df.site == site)].index )
+
+
+    # Put on the same p
+    df.loc[df.site == "Casteld'Asso1", "site"] = "Casteld'Assoi"
+    df.loc[df.site == "Casteld'Asso3", "site"] = "Casteld'Assoi"
+    df.loc[df.site == "Roccarespampani1", "site"] = "Roccarespampani"
+    df.loc[df.site == "Roccarespampani2", "site"] = "Roccarespampani"
+
+
     #width  = 12.0
     #height = width / 1.618
     #print(width, height)
     #sys.exit()
     width = 14
-    height = 20
+    height = 5
     fig = plt.figure(figsize=(width, height))
-    fig.subplots_adjust(hspace=0.1)
+    fig.subplots_adjust(hspace=0.2)
     fig.subplots_adjust(wspace=0.1)
     plt.rcParams['text.usetex'] = False
     plt.rcParams['font.family'] = "sans-serif"
@@ -54,10 +69,17 @@ def main(fname):
     sites = np.unique(df.site)
     for site in sites:
         site_name = re.sub(r"(\w)([A-Z])", r"\1 \2", site)
-        print(site_name)
+        print(site)
+
+        if site == "Casteld'Asso1":
+            site_name = "Castel d'Asso1"
+        elif site == "Casteld'Asso3":
+            site_name = "Castel d'Asso3"
+        elif site == "Casteld'Asso":
+            site_name = "Castel d'Asso"
         #site_name = site[:6]
 
-        ax = fig.add_subplot(15,4,1+count)
+        ax = fig.add_subplot(2,4,1+count)
 
         df_site = df[df.site == site]
         events = int(len(df_site)/4)
@@ -97,14 +119,13 @@ def main(fname):
                 transform=ax.transAxes, fontsize=14, verticalalignment='top',
                 bbox=props)
 
-        #ax.set_ylim(0, 320)
+        ax.set_ylim(0, 320)
         ax.set_xlim(15, 50)
         count += 1
 
-    #ofdir = "/Users/mdekauwe/Dropbox/fluxnet_heatwaves_paper/figures/figs"
-    #fig.savefig(os.path.join(ofdir, "all_events_fluxnet.pdf"),
-    #            bbox_inches='tight', pad_inches=0.1)
-    plt.show()
+    ofdir = "/Users/mdekauwe/Dropbox/fluxnet_heatwaves_paper/figures/figs"
+    fig.savefig(os.path.join(ofdir, "all_events_FLUXNET.pdf"),
+                bbox_inches='tight', pad_inches=0.1)
 
 if __name__ == "__main__":
 
