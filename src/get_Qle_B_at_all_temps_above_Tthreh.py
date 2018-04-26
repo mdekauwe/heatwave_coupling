@@ -144,7 +144,13 @@ def get_all_events(df_flx, df_met):
         Tairs = np.array([np.nan,np.nan,np.nan,np.nan])
         Qles = np.array([np.nan,np.nan,np.nan,np.nan])
         B = np.array([np.nan,np.nan,np.nan,np.nan])
-
+        GPP = np.array([np.nan,np.nan,np.nan,np.nan])
+        
+    if (TXx) < 37.0:
+        Tairs = np.array([np.nan,np.nan,np.nan,np.nan])
+        Qles = np.array([np.nan,np.nan,np.nan,np.nan])
+        B = np.array([np.nan,np.nan,np.nan,np.nan])
+        GPP = np.array([np.nan,np.nan,np.nan,np.nan])
 
     #
     ## Get all the events other than the TXx that are > Tthresh
