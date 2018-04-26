@@ -30,16 +30,20 @@ def main(fname):
 
     df = pd.read_csv(fname)
     df = df[df.pft == "EBF"]
+    ignore_sites = ["Tumbarumba"]
+    for site in ignore_sites:
+        df = df.drop( df[(df.site == site)].index )
+
 
     #width  = 12.0
     #height = width / 1.618
     #print(width, height)
     #sys.exit()
     width = 14
-    height = 5
+    height = 10
     fig = plt.figure(figsize=(width, height))
-    fig.subplots_adjust(hspace=0.2)
-    fig.subplots_adjust(wspace=0.1)
+    fig.subplots_adjust(hspace=0.05)
+    fig.subplots_adjust(wspace=0.05)
     plt.rcParams['text.usetex'] = False
     plt.rcParams['font.family'] = "sans-serif"
     plt.rcParams['font.sans-serif'] = "Helvetica"
@@ -54,7 +58,7 @@ def main(fname):
     sites = np.unique(df.site)
     for site in sites:
         site_name = re.sub(r"(\w)([A-Z])", r"\1 \2", site)
-        ax = fig.add_subplot(2,4,1+count)
+        ax = fig.add_subplot(3,3,1+count)
 
         df_site = df[df.site == site]
         events = int(len(df_site)/4)
@@ -78,13 +82,14 @@ def main(fname):
 
         if count == 0:
             ax.set_ylabel("GPP (g C m$^{-2}$ d$^{-1}$)", position=(0.5, 0.0))
-        if count == 5:
-            ax.set_xlabel('Temperature ($^\circ$C)', position=(1.0, 0.5))
+        if count == 4:
+            #ax.set_xlabel('Temperature ($^\circ$C)', position=(1.0, 0.5))
+            ax.set_xlabel('Temperature ($^\circ$C)')
 
-        if count < 4:
+        if count < 3:
             plt.setp(ax.get_xticklabels(), visible=False)
 
-        if count != 0 and count != 4:
+        if count != 0 and count != 3:
             plt.setp(ax.get_yticklabels(), visible=False)
 
         props = dict(boxstyle='round', facecolor='white', alpha=1.0,
@@ -93,7 +98,9 @@ def main(fname):
                 transform=ax.transAxes, fontsize=14, verticalalignment='top',
                 bbox=props)
 
-        ax.set_ylim(0, 10)
+        from matplotlib.ticker import MaxNLocator
+        ax.yaxis.set_major_locator(MaxNLocator(4))
+        ax.set_ylim(0, 15)
         ax.set_xlim(15, 50)
         count += 1
 
