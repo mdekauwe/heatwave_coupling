@@ -41,7 +41,8 @@ def main(flux_dir, ofname, oz_flux=True):
     df = pd.DataFrame(columns=cols)
     for flux_fn, met_fn in zip(flux_files, met_files):
         (site, df_flx,
-         df_met, pftx) = open_file(flux_fn, met_fn, oz_flux=oz_flux)
+         df_met, pftx,
+         site_name) = open_file(flux_fn, met_fn, oz_flux=oz_flux)
 
         if oz_flux:
             pft = d[site]
@@ -80,7 +81,11 @@ def main(flux_dir, ofname, oz_flux=True):
 
                 lst = []
                 for i in range(len(Tairs)):
-                    lst.append([site,pft,Tairs[i],Qles[i],B[i],GPPs[i]])
+
+                    if oz_flux == False:
+                        lst.append([site_name,pft,Tairs[i],Qles[i],B[i],GPPs[i]])
+                    else:
+                        lst.append([site,pft,Tairs[i],Qles[i],B[i],GPPs[i]])
                 dfx = pd.DataFrame(lst, columns=cols)
                 dfx = dfx.reindex(index=dfx.index[::-1]) # reverse the order hot to cool
                 df = df.append(dfx)
@@ -323,7 +328,7 @@ def mask_crap_days(df_flx, df_met, oz_flux=True):
     else:
         df_met.where(np.logical_or(df_flx.Qle_qc == 0, df_flx.Qle_qc == 1), inplace=True)
         df_met.where(np.logical_or(df_flx.Qh_qc == 0, df_flx.Qh_qc == 1), inplace=True)
-        
+
         df_flx.where(np.logical_or(df_flx.Qle_qc == 0, df_flx.Qle_qc == 1), inplace=True)
         df_flx.where(np.logical_or(df_flx.Qh_qc == 0, df_flx.Qh_qc == 1), inplace=True)
         df_flx.where(np.logical_or(df_met.Tair_qc == 0, df_met.Tair_qc == 1), inplace=True)
@@ -349,8 +354,12 @@ def open_file(flux_fn, met_fn, oz_flux=True):
     if oz_flux == False:
         pft = (str(ds.IGBP_veg_short.values, 'utf-8'))
         pft = pft.replace(" ", "")
+
+        site_name = ds.site_name
+        site_name = site_name.replace(" ", "")
     else:
         pft = None
+        site_name = None
     df_flx = ds.squeeze(dim=["x","y"], drop=True).to_dataframe()
     df_flx = df_flx.reset_index()
     df_flx = df_flx.set_index('time')
@@ -360,7 +369,7 @@ def open_file(flux_fn, met_fn, oz_flux=True):
     df_met = df_met.reset_index()
     df_met = df_met.set_index('time')
 
-    return (site, df_flx, df_met, pft)
+    return (site, df_flx, df_met, pft, site_name)
 
 if __name__ == "__main__":
 
